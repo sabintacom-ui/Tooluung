@@ -180,3 +180,80 @@ Buat script video sesuai struktur JSON yang diminta.`;
 
   return { title, titleOptions, description, hook, outline, narration, tags };
 }
+
+export type ThumbnailCopy = {
+  headline: string;
+  subhead: string;
+  accentColor: string;
+  bgColor: string;
+  emoji: string;
+};
+
+/**
+ * Generate thumbnail copy (headline/subhead/colors) using Snifox Haiku.
+ * Fast call (~3-5s). Returns null on failure so caller can use placeholder.
+ */
+export async function generateThumbnailCopy(input: {
+  topic: string;
+  title: string;
+  hook?: string;
+}): Promise<ThumbnailCopy | null> {
+  const systemPrompt = `Anda adalah designer thumbnail YouTube untuk Sibermas UIN SAIZU (kampus dakwah/keagamaan).
+Buat copy thumbnail singkat, dramatis, mudah dibaca dari preview kecil.
+
+Output WAJIB JSON valid:
+{
+  "headline": "2-5 kata, HURUF BESAR, max 30 karakter",
+  "subhead": "1 baris penjelas, max 50 karakter",
+  "accentColor": "hex color untuk teks aksen (warna terang)",
+  "bgColor": "hex color untuk background (warna gelap/kontras)",
+  "emoji": "1 emoji yang relevan"
+}
+
+Palet brand: teal (#0D9488), gold (#FBBF24), dark navy (#0F172A), green (#10B981).
+Jangan tambahkan teks lain di luar JSON.`;
+
+  const userPrompt = `Topik: ${input.topic}
+Judul video: ${input.title}
+${input.hook ? `Hook: ${input.hook}` : ""}
+
+Buat thumbnail copy.`;
+
+  try {
+    const result = await snifoxChat({
+      model: "anthropic/claude-haiku-4.5",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.8,
+      maxTokens: 400,
+      responseFormat: "json_object",
+    });
+
+    const cleaned = result.content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const parsed = JSON.parse(cleaned) as Partial<ThumbnailCopy>;
+
+    return {
+      headline: String(parsed.headline || input.title).slice(0, 40).toUpperCase(),
+      subhead: String(parsed.subhead || "Sibermas UIN SAIZU").slice(0, 60),
+      accentColor: normalizeHex(parsed.accentColor) || "#FBBF24",
+      bgColor: normalizeHex(parsed.bgColor) || "#0F172A",
+      emoji: String(parsed.emoji || "✨").slice(0, 4),
+    };
+  } catch (error) {
+    console.error("generateThumbnailCopy failed:", (error as Error).message);
+    return null;
+  }
+}
+
+function normalizeHex(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const hex = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  if (/^#[0-9a-f]{3}$/i.test(hex)) return hex;
+  return null;
+}

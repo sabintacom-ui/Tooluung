@@ -1,7 +1,7 @@
 import { claimNextPipelineJobFallback, insertRow, rpc, selectRows, updateRows } from "../db/supabase";
 import { uploadYouTubeVideo } from "../youtube";
 import { assertSafeFilename, shq, sshExec } from "../remote/ssh";
-import { generateVideoScript } from "../ai/snifox";
+import { generateThumbnailCopy, generateVideoScript } from "../ai/snifox";
 import type { PipelineStep } from "../db/schema";
 
 export const PIPELINE_STEPS: PipelineStep[] = [
@@ -133,7 +133,7 @@ async function performStep(job: PipelineJobRow, step: PipelineStep) {
   if (step === "generate_script") return generateScript(content);
   if (step === "generate_voice") return createAsset(job, "voice", "AI voice placeholder generated; connect ElevenLabs for real narration.");
   if (step === "generate_music") return createAsset(job, "music", "Background music placeholder generated; connect Suno for real music.");
-  if (step === "generate_thumbnail") return createAsset(job, "thumbnail", "Thumbnail prompt generated from title/topic.");
+  if (step === "generate_thumbnail") return generateThumbnail(job, content);
   if (step === "fetch_footage") return createAsset(job, "footage", "Stock footage keywords prepared; connect Pexels for real clips.");
   if (step === "render_video") return renderVideo(job, content);
   if (step === "upload_youtube") return uploadVideo(job, content);
@@ -213,6 +213,28 @@ async function createAsset(job: PipelineJobRow, assetType: string, note: string)
     storage_url: `${base}/${job.content_id}-${assetType}.txt`,
     provider: "placeholder",
     metadata: { note, generated_at: new Date().toISOString() },
+  });
+}
+
+async function generateThumbnail(job: PipelineJobRow, content: ContentRow) {
+  const base = (process.env.WORKER_PUBLIC_BASE_URL ?? "https://sibermas.rizquna.id/generated").replace(/\/$/, "");
+  const topic = String(content.topic || "Sibermas UIN SAIZU");
+  const title = String(content.selected_title || content.topic || topic);
+  const script = (content.script ?? {}) as { hook?: string };
+
+  let copy: Awaited<ReturnType<typeof generateThumbnailCopy>> = null;
+  if (process.env.SNIFOX_API_KEY) {
+    copy = await generateThumbnailCopy({ topic, title, hook: script.hook });
+  }
+
+  await insertRow("content_assets", {
+    content_id: job.content_id,
+    asset_type: "thumbnail",
+    storage_url: `${base}/${job.content_id}-thumbnail.txt`,
+    provider: copy ? "snifox" : "placeholder",
+    metadata: copy
+      ? { ...copy, generated_at: new Date().toISOString() }
+      : { note: "Thumbnail prompt generated from title/topic.", generated_at: new Date().toISOString() },
   });
 }
 
