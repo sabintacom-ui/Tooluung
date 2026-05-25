@@ -1,9 +1,9 @@
 import "server-only";
 import { Client, type ConnectConfig } from "ssh2";
-import { spawn } from "node:child_process";
-import { exec as cpExec } from "node:child_process";
+import { spawn, exec as cpExec } from "node:child_process";
 import { promisify } from "node:util";
 import { createReadStream, promises as fs } from "node:fs";
+import * as path from "node:path";
 import { Readable } from "node:stream";
 
 type ExecResult = { stdout: string; stderr: string; code: number | null };
