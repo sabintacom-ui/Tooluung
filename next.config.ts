@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // ssh2 contains native bindings (cpu-features, nan) that Turbopack can't bundle.
+  // Mark as external so Node.js requires it at runtime from node_modules.
+  serverExternalPackages: ["ssh2", "cpu-features"],
   poweredByHeader: false,
   async headers() {
     return [
