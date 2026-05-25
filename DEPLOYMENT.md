@@ -347,10 +347,121 @@ bash scripts/e2e-test.sh
 | Build fail di hook | `pm2 logs sibermas`, `ssh server 'cd ~/sibermas-yt && npm run build'` |
 | Tunnel 502 | `sudo systemctl restart cloudflared-rizquna`, cek `journalctl -u cloudflared-rizquna -f` |
 
-## Verified E2E (May 25, 2026)
+## UI Pro Dashboard + PWA
 
+UI di-upgrade ke level produksi dengan branding **Sibermas UIN SAIZU** (commit `bda17d4` + revisi PWA `1027b86`).
+
+### Komponen Utama (`app/page.tsx`, 480 lines)
+- **Hero + Bismillah** Arabic (Amiri font) — branding teal+gold dengan logo SY
+- **Top nav** dengan brand-logo + breadcrumb
+- **Stats grid** 4 kartu (Total / Done / Running / Uploads) dengan accent bar gradient
+- **Quick actions** 6-tile grid (Pipeline Start, Trigger Worker, Health, Recent Jobs, YouTube Status, Help)
+- **Pipeline progress visualizer** — 7-step horizontal dengan shimmer animation step aktif
+- **History timeline** + YouTube thumbnail embed (`img.youtube.com/vi/<id>/hqdefault.jpg`)
+- **Auto-refresh** polling 8 detik tanpa flicker
+- **PWA install banner** + Service Worker manifest
+- **Footer** Sibermas UIN SAIZU
+
+### Design System (`app/styles.css`)
+```css
+:root {
+  --teal: #14b8a6;
+  --teal-deep: #0d9488;
+  --green: #064e3b;
+  --gold: #fbbf24;
+  --bg: #04140f;
+}
+/* Fonts: Plus Jakarta Sans (UI), Inter (body), Amiri (Arabic bismillah) */
+```
+
+### PWA Assets
+| File | Size | Purpose |
+|---|---|---|
+| `public/manifest.webmanifest` | 0.5KB | Theme `#0d9488`, bg `#04140f`, standalone display |
+| `public/icon.svg` | 1.3KB | Gradient "SY" logo, scalable |
+| `public/icon-192.png` | 44KB | Android home screen icon |
+| `public/icon-512.png` | 259KB | Splash screen + Play Store icon |
+
+Layout (`app/layout.tsx`) inject metadata, OpenGraph, viewport `themeColor: #0d9488`, manifest link.
+
+### Test PWA
+1. Chrome Android → buka `https://sibermas.rizquna.id`
+2. Banner "Install Sibermas-YT" muncul di footer
+3. Tap → tambah ke home screen
+4. Buka dari home → splash teal+green + icon → standalone window tanpa URL bar
+
+## Worker Mode (Local Loopback)
+
+`lib/remote/ssh.ts` punya auto-detection:
+- `SSH_HOST=127.0.0.1` atau `localhost` → **local mode** (pakai `child_process.spawn`, bypass SSH overhead)
+- Otherwise → **SSH mode** (pakai `ssh2.Client` connect)
+
+Di production server, set `SSH_HOST=127.0.0.1` di `.env.production` → pipeline jalan **64 detik untuk 7 step** (vs ~3 menit lewat SSH loopback). Render ffmpeg masuk ke `/home/rizqunaid/sibermas-worker/output/`.
+
+## Verified E2E
+
+### Run 1: May 25, 2026 (initial deploy)
 ✅ Job `56675b6a-9bc7-426a-8e17-0343c4d99afb` — completed 7/7 steps  
 ✅ YouTube video: https://www.youtube.com/watch?v=wrvep-tsPHs (private)  
 ✅ Rendered MP4: `https://sibermas.rizquna.id/generated/a0c56815-71a9-4c61-afa5-9f320110a352.mp4` (53KB)  
 ✅ Snifox AI generated Indonesian script + 14 tags + chapters  
 ✅ Public HTTPS health check: `{"ok":true, ...12 checks pass}`
+
+### Run 2: May 25, 2026 (post UI upgrade + PWA + systemd timer)
+✅ Job `36ed0135-26ec-4bf6-8067-f215b9b00622` — completed 7/7 steps (64 detik wallclock)  
+✅ YouTube video: https://www.youtube.com/watch?v=DFrLHVMTUvI (private)  
+✅ Topic: "Hikmah Sabar dalam Al-Quran"  
+✅ Cost: $0.00 (Snifox credits)  
+✅ Step durations (Supabase pipeline_logs):
+
+| Step | Completed at | Δ |
+|---|---|---|
+| generate_script | 20:56:19 | start |
+| generate_voice | 20:56:29 | +10s |
+| generate_music | 20:56:38 | +9s |
+| generate_thumbnail | 20:56:48 | +10s |
+| fetch_footage | 20:56:58 | +10s |
+| render_video | 20:57:09 | +11s |
+| upload_youtube | 20:57:23 | +14s |
+
+## Recovery Playbook
+
+### Symptom: HTTP 502 setelah git push
+Penyebab umum: build hook gagal (TypeScript error) → `.next/BUILD_ID` tidak ter-update → PM2 restart loop dengan `Could not find a production build`.
+
+**Fix:**
+```bash
+ssh rizqunaid@192.168.18.210
+cd /home/rizqunaid/sibermas-yt
+pm2 stop sibermas
+rm -rf .next/cache .next/types
+npm run build              # cek error TypeScript secara explicit
+pm2 reset sibermas         # clear restart counter
+pm2 start sibermas
+sleep 5
+pm2 list | grep sibermas   # status: online, 0 restart
+curl http://127.0.0.1:3100/api/health
+```
+
+### Symptom: systemd timer fail dengan exit-code 2
+Penyebab: quoting error di `trigger-cron.sh` atau env var tidak ter-load.
+
+**Fix:** Gunakan service unit pure-curl (no bash wrapper):
+```ini
+[Service]
+Type=oneshot
+User=rizqunaid
+EnvironmentFile=/home/rizqunaid/sibermas-yt/.env.production
+ExecStart=/usr/bin/curl -fsS -X POST \
+  -H "x-worker-secret: ${WORKER_SECRET}" \
+  --max-time 290 \
+  https://sibermas.rizquna.id/api/pipeline/trigger \
+  -o /tmp/sibermas-trigger.log
+```
+
+### Symptom: PM2 in-memory version mismatch warning
+```
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+```
+Kosmetik saja, tidak block fungsi. Jalankan `pm2 update` saat maintenance window (brief restart semua proses).
