@@ -56,6 +56,8 @@ export async function uploadYouTubeVideo(input: {
   description?: string;
   tags?: string[];
   privacyStatus?: "private" | "unlisted" | "public";
+  categoryId?: string;
+  defaultLanguage?: string;
 }) {
   const token = await getGoogleAccessToken();
   assertSafeVideoUrl(input.videoUrl);
@@ -66,13 +68,18 @@ export async function uploadYouTubeVideo(input: {
   if (size && size > maxBytes) throw new Error("Video too large");
   const videoBlob = await videoResponse.blob();
   if (videoBlob.size > maxBytes) throw new Error("Video too large");
+  const snippet: Record<string, unknown> = {
+    title: input.title,
+    description: input.description ?? "",
+    tags: input.tags ?? [],
+    categoryId: input.categoryId ?? "22",
+  };
+  if (input.defaultLanguage) {
+    snippet.defaultLanguage = input.defaultLanguage;
+    snippet.defaultAudioLanguage = input.defaultLanguage;
+  }
   const metadata = {
-    snippet: {
-      title: input.title,
-      description: input.description ?? "",
-      tags: input.tags ?? [],
-      categoryId: "22",
-    },
+    snippet,
     status: { privacyStatus: input.privacyStatus ?? "private" },
   };
   const init = await fetch(

@@ -341,3 +341,116 @@ Generate footage plan.`;
     return null;
   }
 }
+
+export type YouTubeSeo = {
+  optimizedTitle: string;
+  titleVariants: string[];
+  optimizedDescription: string;
+  optimizedTags: string[];
+  chapters: Array<{ time: string; label: string }>;
+  categoryId: string;
+  defaultLanguage: string;
+};
+
+/**
+ * Generate YouTube SEO metadata using Snifox Opus.
+ * Slow call (~20-40s). Wrapped with timeout 45s. Returns null on failure.
+ */
+export async function generateYouTubeSeo(input: {
+  topic: string;
+  currentTitle: string;
+  hook?: string;
+  narration?: string;
+  baseTags?: string[];
+}): Promise<YouTubeSeo | null> {
+  const systemPrompt = `Anda adalah YouTube SEO specialist untuk channel edukasi Sibermas UIN SAIZU (dakwah/keagamaan, Bahasa Indonesia).
+Buat metadata YouTube yang SEO-optimized untuk maximum reach + engagement organik.
+
+Output STRICT JSON:
+{
+  "optimizedTitle": "judul SEO max 90 char, catchy, ada keyword utama di depan",
+  "titleVariants": ["3 alternatif judul, masing-masing max 90 char"],
+  "optimizedDescription": "deskripsi 300-500 kata. Paragraf pertama hook menarik. Sertakan chapter timestamps format '00:00 Intro'. Akhiri dengan hashtag #sibermas #uinsaizu",
+  "optimizedTags": ["12-15 tag YouTube lowercase, mix general dan long-tail keywords"],
+  "chapters": [
+    {"time": "00:00", "label": "Intro"},
+    {"time": "00:30", "label": "Topik utama"}
+  ],
+  "categoryId": "27",
+  "defaultLanguage": "id"
+}
+
+Aturan:
+- categoryId default "27" (Education) atau "22" (People & Blogs) atau "24" (Entertainment)
+- defaultLanguage "id" (Indonesia)
+- 4-6 chapters dengan timestamps masuk akal (00:00, 00:30, 01:00, 01:30, dst)
+- Tags lowercase, no #, mix kata umum + spesifik
+- Description bahasa Indonesia natural, tidak spammy
+- Jangan markdown, JSON only`;
+
+  const userPrompt = `Topik: ${input.topic}
+Judul saat ini: ${input.currentTitle}
+${input.hook ? `Hook: ${input.hook}` : ""}
+${input.narration ? `Narasi (excerpt): ${input.narration.slice(0, 1500)}` : ""}
+${input.baseTags?.length ? `Tag dasar: ${input.baseTags.join(", ")}` : ""}
+
+Buat YouTube SEO metadata optimal.`;
+
+  try {
+    const result = await snifoxChat({
+      model: "anthropic/claude-opus-4.7",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.6,
+      maxTokens: 2500,
+      responseFormat: "json_object",
+    });
+
+    const cleaned = result.content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const parsed = JSON.parse(cleaned) as Partial<YouTubeSeo>;
+
+    const optimizedTitle = String(parsed.optimizedTitle || input.currentTitle).slice(0, 100);
+    const titleVariants = Array.isArray(parsed.titleVariants)
+      ? parsed.titleVariants.map((t) => String(t).slice(0, 100)).slice(0, 5)
+      : [optimizedTitle];
+    const optimizedDescription = String(parsed.optimizedDescription || "").slice(0, 5000);
+    const optimizedTags = Array.isArray(parsed.optimizedTags)
+      ? parsed.optimizedTags
+          .map((t) => String(t).toLowerCase().trim().replace(/^#/, ""))
+          .filter((t) => t.length > 0 && t.length < 40)
+          .slice(0, 15)
+      : input.baseTags ?? [];
+    const chapters = Array.isArray(parsed.chapters)
+      ? parsed.chapters
+          .map((c) => ({
+            time: String((c as { time?: unknown }).time ?? "00:00").slice(0, 10),
+            label: String((c as { label?: unknown }).label ?? "").slice(0, 80),
+          }))
+          .filter((c) => c.label.length > 0)
+          .slice(0, 10)
+      : [];
+
+    const categoryId = /^\d{1,3}$/.test(String(parsed.categoryId)) ? String(parsed.categoryId) : "27";
+    const defaultLanguage = String(parsed.defaultLanguage || "id").slice(0, 5);
+
+    if (!optimizedTitle && !optimizedDescription) return null;
+
+    return {
+      optimizedTitle,
+      titleVariants,
+      optimizedDescription,
+      optimizedTags,
+      chapters,
+      categoryId,
+      defaultLanguage,
+    };
+  } catch (error) {
+    console.error("generateYouTubeSeo failed:", (error as Error).message);
+    return null;
+  }
+}

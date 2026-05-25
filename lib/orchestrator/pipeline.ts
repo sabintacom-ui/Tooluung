@@ -1,7 +1,7 @@
 import { claimNextPipelineJobFallback, insertRow, rpc, selectRows, updateRows } from "../db/supabase";
 import { uploadYouTubeVideo } from "../youtube";
 import { assertSafeFilename, shq, sshExec } from "../remote/ssh";
-import { generateFootageKeywords, generateThumbnailCopy, generateVideoScript } from "../ai/snifox";
+import { generateFootageKeywords, generateThumbnailCopy, generateVideoScript, generateYouTubeSeo } from "../ai/snifox";
 import type { PipelineStep } from "../db/schema";
 
 export const PIPELINE_STEPS: PipelineStep[] = [
@@ -311,12 +311,56 @@ async function uploadVideo(job: PipelineJobRow, content: ContentRow) {
   const rows = await selectRows<Record<string, unknown>>("content_assets", `content_id=eq.${encodeURIComponent(job.content_id)}&asset_type=eq.video&select=*&order=created_at.desc&limit=1`);
   const video = rows[0];
   if (!video?.storage_url) throw new Error("No rendered video asset");
+
+  const baseTitle = String(content.selected_title || content.topic || "Untitled video");
+  const baseDescription = String(content.description || "");
+  const baseTags = Array.isArray(content.tags) ? content.tags.map(String) : [];
+  const script = (content.script ?? {}) as { hook?: string; narration?: string };
+
+  let title = baseTitle;
+  let description = baseDescription;
+  let tags = baseTags;
+  let categoryId: string | undefined;
+  let defaultLanguage: string | undefined;
+  let seoMeta: Awaited<ReturnType<typeof generateYouTubeSeo>> = null;
+
+  if (process.env.SNIFOX_API_KEY) {
+    seoMeta = await generateYouTubeSeo({
+      topic: String(content.topic || baseTitle),
+      currentTitle: baseTitle,
+      hook: script.hook,
+      narration: script.narration,
+      baseTags,
+    });
+    if (seoMeta) {
+      title = seoMeta.optimizedTitle || title;
+      const chaptersBlock = seoMeta.chapters.length
+        ? "\n\n📚 Chapters:\n" + seoMeta.chapters.map((c) => `${c.time} ${c.label}`).join("\n")
+        : "";
+      description = (seoMeta.optimizedDescription || baseDescription) + chaptersBlock;
+      tags = seoMeta.optimizedTags.length ? seoMeta.optimizedTags : tags;
+      categoryId = seoMeta.categoryId;
+      defaultLanguage = seoMeta.defaultLanguage;
+
+      // Persist SEO metadata into contents.script.seo (no separate column)
+      const updatedScript = { ...(content.script as Record<string, unknown> ?? {}), seo: seoMeta };
+      await updateRows("contents", `id=eq.${encodeURIComponent(content.id)}`, {
+        script: updatedScript,
+        selected_title: title,
+        description,
+        tags: tags.slice(0, 15),
+      });
+    }
+  }
+
   const result = await uploadYouTubeVideo({
     videoUrl: String(video.storage_url),
-    title: String(content.selected_title || content.topic || "Untitled video"),
-    description: String(content.description || ""),
-    tags: Array.isArray(content.tags) ? content.tags.map(String) : [],
+    title,
+    description,
+    tags,
     privacyStatus: "private",
+    categoryId,
+    defaultLanguage,
   });
   await insertRow("youtube_videos", {
     content_id: job.content_id,
