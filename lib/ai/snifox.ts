@@ -54,8 +54,7 @@ export async function snifoxChat(input: {
   }
 
   const controller = new AbortController();
-  // Default 45s — short enough for pipeline trigger curl (290s) to handle 7 steps
-  const timeoutMs = Number(process.env.SNIFOX_TIMEOUT_MS ?? "45000");
+  const timeoutMs = Number(process.env.SNIFOX_TIMEOUT_MS ?? "120000");
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {

@@ -367,21 +367,17 @@ async function uploadVideo(job: PipelineJobRow, content: ContentRow) {
       defaultLanguage = seo.defaultLanguage;
       defaultAudioLanguage = seo.defaultAudioLanguage;
       seoProvider = "snifox-claude-opus-4.7";
-      // Persist SEO metadata into existing `script` JSONB column (seo_metadata column doesn't exist in schema)
-      const existingScript = (content.script as Record<string, unknown>) || {};
+      // Persist SEO metadata to content row
       await updateRows("contents", `id=eq.${encodeURIComponent(content.id)}`, {
         selected_title: title,
         description,
         tags,
-        script: {
-          ...existingScript,
-          seo: {
-            provider: seoProvider,
-            title_variants: seo.titleVariants,
-            chapters: seo.chapters,
-            category_id: categoryId,
-            generated_at: new Date().toISOString(),
-          },
+        seo_metadata: {
+          provider: seoProvider,
+          title_variants: seo.titleVariants,
+          chapters: seo.chapters,
+          category_id: categoryId,
+          generated_at: new Date().toISOString(),
         },
       });
     } catch (error) {
