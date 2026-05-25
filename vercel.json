@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/pipeline/trigger/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/pipeline/start/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/pipeline/status/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/pipeline/recent/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/queue/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/youtube/status/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/health/route.ts": {
+      "maxDuration": 5
+    },
+    "app/generated/[filename]/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/pipeline/trigger",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
