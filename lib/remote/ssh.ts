@@ -1,7 +1,29 @@
 import "server-only";
 import { Client, type ConnectConfig } from "ssh2";
+import { exec as execCb, spawn } from "node:child_process";
+import { promisify } from "node:util";
+import { promises as fs, createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import * as path from "node:path";
+
+const execAsync = promisify(execCb);
 
 type ExecResult = { stdout: string; stderr: string; code: number | null };
+
+/**
+ * Worker mode:
+ *   - "local": run shell commands directly via child_process on the same host
+ *     (used when Next.js runs on the same machine as the render worker)
+ *   - "ssh"  : connect to remote host via SSH2 (default for cross-host setups)
+ */
+function workerMode(): "local" | "ssh" {
+  const mode = (process.env.WORKER_MODE ?? "").toLowerCase().trim();
+  if (mode === "local") return "local";
+  // Auto-detect: if SSH_HOST is loopback, treat as local for performance.
+  const host = process.env.SSH_HOST?.trim();
+  if (host === "127.0.0.1" || host === "localhost" || host === "::1") return "local";
+  return "ssh";
+}
 
 function buildAuth(): ConnectConfig {
   const host = process.env.SSH_HOST;
@@ -47,8 +69,42 @@ function connect(): Promise<Client> {
   });
 }
 
+async function localExec(command: string, timeoutMs: number): Promise<ExecResult> {
+  return new Promise<ExecResult>((resolve, reject) => {
+    const child = spawn("bash", ["-c", command], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    const MAX_BUFFER = 2 * 1024 * 1024;
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`Local command timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (stdout.length < MAX_BUFFER) stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      if (stderr.length < MAX_BUFFER) stderr += chunk.toString("utf8");
+    });
+    child.once("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.once("close", (code) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, code });
+    });
+  });
+}
+
 export async function sshExec(command: string, opts: { timeoutMs?: number } = {}): Promise<ExecResult> {
   const timeoutMs = opts.timeoutMs ?? 8 * 60_000;
+
+  if (workerMode() === "local") {
+    return localExec(command, timeoutMs);
+  }
+
   const client = await connect();
   try {
     return await new Promise<ExecResult>((resolve, reject) => {
@@ -81,6 +137,12 @@ export async function sshExec(command: string, opts: { timeoutMs?: number } = {}
 }
 
 export async function sshPutFile(remotePath: string, content: string | Buffer): Promise<void> {
+  if (workerMode() === "local") {
+    await fs.mkdir(path.dirname(remotePath), { recursive: true });
+    await fs.writeFile(remotePath, content);
+    return;
+  }
+
   const client = await connect();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -98,10 +160,18 @@ export async function sshPutFile(remotePath: string, content: string | Buffer): 
 }
 
 /**
- * Stream a remote file via SFTP back as a Web ReadableStream.
- * The SSH client is closed automatically when the stream ends or errors.
+ * Stream a remote (or local) file back as a Web ReadableStream.
+ * In local mode this is a direct fs read; in ssh mode SFTP is used.
  */
 export async function sftpReadStream(remotePath: string): Promise<ReadableStream<Uint8Array>> {
+  if (workerMode() === "local") {
+    // Throw ENOENT if missing (same behaviour as sftp.stat)
+    await fs.stat(remotePath);
+    const nodeStream = createReadStream(remotePath);
+    // Convert Node Readable -> Web ReadableStream
+    return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+  }
+
   const client = await connect();
   const sftp = await new Promise<import("ssh2").SFTPWrapper>((resolve, reject) => {
     client.sftp((err, s) => (err ? reject(err) : resolve(s)));
@@ -149,6 +219,7 @@ export function assertSafeFilename(name: string) {
 
 export function sshConfig() {
   return {
+    mode: workerMode(),
     host: process.env.SSH_HOST,
     port: Number(process.env.SSH_PORT ?? "22"),
     user: process.env.SSH_USER,
@@ -156,12 +227,16 @@ export function sshConfig() {
 }
 
 /**
- * Render a placeholder MP4 on the remote worker host via ffmpeg.
+ * Render a placeholder MP4 on the worker host via ffmpeg.
  * Returns the absolute remote path of the produced file.
+ * Uses local shell or SSH based on workerMode().
  */
 export async function renderRemoteVideo(jobId: string, title: string): Promise<string> {
   if (!/^[0-9a-f-]{8,64}$/i.test(jobId)) throw new Error("Invalid job id");
   const remoteDir = (process.env.WORKER_REMOTE_DIR ?? "~/sibermas-worker/output").replace(/[`$"\\]/g, "");
+  if (remoteDir.startsWith("~")) {
+    throw new Error("WORKER_REMOTE_DIR must be an absolute path (got tilde)");
+  }
   const safeTitle = title
     .replace(/[\r\n]/g, " ")
     .replace(/'/g, "")
@@ -184,7 +259,7 @@ export async function renderRemoteVideo(jobId: string, title: string): Promise<s
 }
 
 /**
- * Build a public URL for the rendered video assuming the remote worker
+ * Build a public URL for the rendered video assuming the worker
  * exposes its output dir over HTTPS (e.g. via nginx static serve).
  */
 export function publicVideoUrl(jobId: string): string {
