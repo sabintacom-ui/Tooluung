@@ -1,14 +1,21 @@
 import "server-only";
 import { Client, type ConnectConfig } from "ssh2";
-import { exec as execCb, spawn } from "node:child_process";
+import { exec as cpExec } from "node:child_process";
 import { promisify } from "node:util";
-import { promises as fs, createReadStream } from "node:fs";
+import { createReadStream, promises as fs } from "node:fs";
 import { Readable } from "node:stream";
-import * as path from "node:path";
-
-const execAsync = promisify(execCb);
 
 type ExecResult = { stdout: string; stderr: string; code: number | null };
+
+const execAsync = promisify(cpExec);
+
+function isLocalMode(): boolean {
+  return (
+    process.env.WORKER_MODE === "local" ||
+    process.env.SSH_HOST === "127.0.0.1" ||
+    process.env.SSH_HOST === "localhost"
+  );
+}
 
 /**
  * Worker mode:
@@ -101,8 +108,23 @@ async function localExec(command: string, timeoutMs: number): Promise<ExecResult
 export async function sshExec(command: string, opts: { timeoutMs?: number } = {}): Promise<ExecResult> {
   const timeoutMs = opts.timeoutMs ?? 8 * 60_000;
 
-  if (workerMode() === "local") {
-    return localExec(command, timeoutMs);
+  // Local mode: skip SSH overhead, run via child_process
+  if (isLocalMode()) {
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: timeoutMs,
+        maxBuffer: 4 * 1024 * 1024,
+        shell: "/bin/bash",
+      });
+      return { stdout, stderr, code: 0 };
+    } catch (err: unknown) {
+      const e = err as { code?: number; stdout?: string; stderr?: string; message?: string };
+      return {
+        stdout: e.stdout ?? "",
+        stderr: e.stderr ?? e.message ?? "unknown error",
+        code: typeof e.code === "number" ? e.code : 1,
+      };
+    }
   }
 
   const client = await connect();
@@ -219,10 +241,10 @@ export function assertSafeFilename(name: string) {
 
 export function sshConfig() {
   return {
-    mode: workerMode(),
     host: process.env.SSH_HOST,
     port: Number(process.env.SSH_PORT ?? "22"),
     user: process.env.SSH_USER,
+    mode: isLocalMode() ? "local" : "ssh",
   };
 }
 
