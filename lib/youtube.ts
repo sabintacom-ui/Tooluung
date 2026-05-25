@@ -56,9 +56,6 @@ export async function uploadYouTubeVideo(input: {
   description?: string;
   tags?: string[];
   privacyStatus?: "private" | "unlisted" | "public";
-  categoryId?: string;
-  defaultLanguage?: string;
-  defaultAudioLanguage?: string;
 }) {
   const token = await getGoogleAccessToken();
   assertSafeVideoUrl(input.videoUrl);
@@ -74,9 +71,7 @@ export async function uploadYouTubeVideo(input: {
       title: input.title,
       description: input.description ?? "",
       tags: input.tags ?? [],
-      categoryId: input.categoryId ?? "22",
-      defaultLanguage: input.defaultLanguage ?? "id",
-      defaultAudioLanguage: input.defaultAudioLanguage ?? "id",
+      categoryId: "22",
     },
     status: { privacyStatus: input.privacyStatus ?? "private" },
   };
