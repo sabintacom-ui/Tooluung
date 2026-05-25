@@ -1,7 +1,7 @@
 import { claimNextPipelineJobFallback, insertRow, rpc, selectRows, updateRows } from "../db/supabase";
 import { uploadYouTubeVideo } from "../youtube";
 import { assertSafeFilename, shq, sshExec } from "../remote/ssh";
-import { generateVideoScript } from "../ai/snifox";
+import { generateVideoScript, generateThumbnailCopy, generateFootageKeywords, generateYouTubeSeo } from "../ai/snifox";
 import type { PipelineStep } from "../db/schema";
 
 export const PIPELINE_STEPS: PipelineStep[] = [
@@ -133,8 +133,8 @@ async function performStep(job: PipelineJobRow, step: PipelineStep) {
   if (step === "generate_script") return generateScript(content);
   if (step === "generate_voice") return createAsset(job, "voice", "AI voice placeholder generated; connect ElevenLabs for real narration.");
   if (step === "generate_music") return createAsset(job, "music", "Background music placeholder generated; connect Suno for real music.");
-  if (step === "generate_thumbnail") return createAsset(job, "thumbnail", "Thumbnail prompt generated from title/topic.");
-  if (step === "fetch_footage") return createAsset(job, "footage", "Stock footage keywords prepared; connect Pexels for real clips.");
+  if (step === "generate_thumbnail") return generateThumbnail(job, content);
+  if (step === "fetch_footage") return generateFootagePlan(job, content);
   if (step === "render_video") return renderVideo(job, content);
   if (step === "upload_youtube") return uploadVideo(job, content);
 }
@@ -216,6 +216,78 @@ async function createAsset(job: PipelineJobRow, assetType: string, note: string)
   });
 }
 
+async function generateThumbnail(job: PipelineJobRow, content: ContentRow) {
+  const base = (process.env.WORKER_PUBLIC_BASE_URL ?? "https://sibermas.rizquna.id/generated").replace(/\/$/, "");
+  const title = String(content.selected_title || content.topic || "Sibermas");
+  const topic = String(content.topic || title);
+  const script = (content.script as Record<string, unknown>) || {};
+  const hook = String(script.hook || "");
+
+  let provider = "placeholder";
+  let copy: Record<string, unknown> = { note: "Thumbnail copy fallback (no Snifox)" };
+
+  if (process.env.SNIFOX_API_KEY) {
+    try {
+      const result = await generateThumbnailCopy({ title, topic, hook });
+      copy = {
+        headline: result.headline,
+        subhead: result.subhead,
+        accent_color: result.accentColor,
+        bg_color: result.bgColor,
+        emoji: result.emoji,
+        generated_at: new Date().toISOString(),
+      };
+      provider = "snifox";
+    } catch (error) {
+      console.error("Snifox thumbnail copy failed:", error);
+    }
+  }
+
+  await insertRow("content_assets", {
+    content_id: job.content_id,
+    asset_type: "thumbnail",
+    storage_url: `${base}/${job.content_id}-thumbnail.json`,
+    provider,
+    metadata: copy,
+  });
+}
+
+async function generateFootagePlan(job: PipelineJobRow, content: ContentRow) {
+  const base = (process.env.WORKER_PUBLIC_BASE_URL ?? "https://sibermas.rizquna.id/generated").replace(/\/$/, "");
+  const topic = String(content.topic || "Sibermas");
+  const script = (content.script as Record<string, unknown>) || {};
+  const narration = String(script.narration || "");
+
+  let provider = "placeholder";
+  let plan: Record<string, unknown> = {
+    note: "Footage keywords fallback",
+    keywords: ["mosque", "students", "indonesia", "education"],
+  };
+
+  if (process.env.SNIFOX_API_KEY && narration) {
+    try {
+      const result = await generateFootageKeywords({ topic, narration });
+      plan = {
+        keywords: result.keywords,
+        scenes: result.scenes,
+        source: "snifox-claude-haiku-4.5",
+        generated_at: new Date().toISOString(),
+      };
+      provider = "snifox";
+    } catch (error) {
+      console.error("Snifox footage keywords failed:", error);
+    }
+  }
+
+  await insertRow("content_assets", {
+    content_id: job.content_id,
+    asset_type: "footage",
+    storage_url: `${base}/${job.content_id}-footage.json`,
+    provider,
+    metadata: plan,
+  });
+}
+
 async function renderVideo(job: PipelineJobRow, content: ContentRow) {
   const title = String(content.selected_title || content.topic || "Sibermas YT")
     .replace(/[\r\n:]/g, " ")
@@ -267,11 +339,60 @@ async function uploadVideo(job: PipelineJobRow, content: ContentRow) {
   const rows = await selectRows<Record<string, unknown>>("content_assets", `content_id=eq.${encodeURIComponent(job.content_id)}&asset_type=eq.video&select=*&order=created_at.desc&limit=1`);
   const video = rows[0];
   if (!video?.storage_url) throw new Error("No rendered video asset");
+
+  // Optional: Snifox SEO optimizer (overrides title/description/tags before upload)
+  let title = String(content.selected_title || content.topic || "Untitled video");
+  let description = String(content.description || "");
+  let tags = Array.isArray(content.tags) ? content.tags.map(String) : [];
+  let categoryId: string | undefined;
+  let defaultLanguage: string | undefined;
+  let defaultAudioLanguage: string | undefined;
+  let seoProvider = "from-script";
+
+  if (process.env.SNIFOX_API_KEY) {
+    try {
+      const script = (content.script as Record<string, unknown>) || {};
+      const narration = String(script.narration || description);
+      const seo = await generateYouTubeSeo({
+        topic: String(content.topic || title),
+        title,
+        narration,
+        channelName: "Sibermas UIN SAIZU",
+        baseTags: tags,
+      });
+      title = seo.title;
+      description = seo.description;
+      tags = seo.tags;
+      categoryId = seo.categoryId;
+      defaultLanguage = seo.defaultLanguage;
+      defaultAudioLanguage = seo.defaultAudioLanguage;
+      seoProvider = "snifox-claude-opus-4.7";
+      // Persist SEO metadata to content row
+      await updateRows("contents", `id=eq.${encodeURIComponent(content.id)}`, {
+        selected_title: title,
+        description,
+        tags,
+        seo_metadata: {
+          provider: seoProvider,
+          title_variants: seo.titleVariants,
+          chapters: seo.chapters,
+          category_id: categoryId,
+          generated_at: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Snifox SEO optimization failed, using script defaults:", error);
+    }
+  }
+
   const result = await uploadYouTubeVideo({
     videoUrl: String(video.storage_url),
-    title: String(content.selected_title || content.topic || "Untitled video"),
-    description: String(content.description || ""),
-    tags: Array.isArray(content.tags) ? content.tags.map(String) : [],
+    title,
+    description,
+    tags,
+    categoryId,
+    defaultLanguage,
+    defaultAudioLanguage,
     privacyStatus: "private",
   });
   await insertRow("youtube_videos", {
