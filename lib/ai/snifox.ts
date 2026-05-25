@@ -257,3 +257,87 @@ function normalizeHex(value: unknown): string | null {
   if (/^#[0-9a-f]{3}$/i.test(hex)) return hex;
   return null;
 }
+
+export type FootagePlan = {
+  keywords: string[];
+  scenes: Array<{ timeSec: number; query: string }>;
+};
+
+/**
+ * Generate English footage keywords + scene plan using Snifox Haiku.
+ * Fast call (~3-6s). Returns null on failure so caller can use placeholder.
+ */
+export async function generateFootageKeywords(input: {
+  topic: string;
+  title: string;
+  narration?: string;
+}): Promise<FootagePlan | null> {
+  const systemPrompt = `You are a footage planner for educational YouTube videos.
+Given a topic in Indonesian, produce ENGLISH stock-footage search keywords
+(for Pexels/Pixabay) and a scene plan timeline.
+
+Output STRICT JSON only:
+{
+  "keywords": ["5-8 short English keyword phrases, lowercase, no punctuation"],
+  "scenes": [
+    {"timeSec": 0, "query": "english search query"},
+    {"timeSec": 15, "query": "english search query"}
+  ]
+}
+
+Rules:
+- 5-8 keywords (2-3 words each, lowercase, English only)
+- 4-6 scenes with timeSec increasing (0, ~15, ~30, ~45, ~60, ~90)
+- Queries must be safe-for-work, abstract or generic visuals
+- No personal names, no religious imagery requiring sensitivity
+- No markdown, no code fences, JSON only`;
+
+  const userPrompt = `Topic (Indonesian): ${input.topic}
+Title: ${input.title}
+${input.narration ? `Narration excerpt: ${input.narration.slice(0, 600)}` : ""}
+
+Generate footage plan.`;
+
+  try {
+    const result = await snifoxChat({
+      model: "anthropic/claude-haiku-4.5",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.6,
+      maxTokens: 600,
+      responseFormat: "json_object",
+    });
+
+    const cleaned = result.content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const parsed = JSON.parse(cleaned) as Partial<FootagePlan>;
+
+    const keywords = Array.isArray(parsed.keywords)
+      ? parsed.keywords
+          .map((k) => String(k).toLowerCase().trim().replace(/[^a-z0-9 ]/g, ""))
+          .filter((k) => k.length > 0 && k.length < 60)
+          .slice(0, 8)
+      : [];
+
+    const scenes = Array.isArray(parsed.scenes)
+      ? parsed.scenes
+          .map((s) => ({
+            timeSec: Number((s as { timeSec?: unknown }).timeSec ?? 0) || 0,
+            query: String((s as { query?: unknown }).query ?? "").trim().slice(0, 80),
+          }))
+          .filter((s) => s.query.length > 0)
+          .slice(0, 8)
+      : [];
+
+    if (keywords.length === 0 && scenes.length === 0) return null;
+
+    return { keywords, scenes };
+  } catch (error) {
+    console.error("generateFootageKeywords failed:", (error as Error).message);
+    return null;
+  }
+}

@@ -1,7 +1,7 @@
 import { claimNextPipelineJobFallback, insertRow, rpc, selectRows, updateRows } from "../db/supabase";
 import { uploadYouTubeVideo } from "../youtube";
 import { assertSafeFilename, shq, sshExec } from "../remote/ssh";
-import { generateThumbnailCopy, generateVideoScript } from "../ai/snifox";
+import { generateFootageKeywords, generateThumbnailCopy, generateVideoScript } from "../ai/snifox";
 import type { PipelineStep } from "../db/schema";
 
 export const PIPELINE_STEPS: PipelineStep[] = [
@@ -134,7 +134,7 @@ async function performStep(job: PipelineJobRow, step: PipelineStep) {
   if (step === "generate_voice") return createAsset(job, "voice", "AI voice placeholder generated; connect ElevenLabs for real narration.");
   if (step === "generate_music") return createAsset(job, "music", "Background music placeholder generated; connect Suno for real music.");
   if (step === "generate_thumbnail") return generateThumbnail(job, content);
-  if (step === "fetch_footage") return createAsset(job, "footage", "Stock footage keywords prepared; connect Pexels for real clips.");
+  if (step === "fetch_footage") return fetchFootage(job, content);
   if (step === "render_video") return renderVideo(job, content);
   if (step === "upload_youtube") return uploadVideo(job, content);
 }
@@ -235,6 +235,28 @@ async function generateThumbnail(job: PipelineJobRow, content: ContentRow) {
     metadata: copy
       ? { ...copy, generated_at: new Date().toISOString() }
       : { note: "Thumbnail prompt generated from title/topic.", generated_at: new Date().toISOString() },
+  });
+}
+
+async function fetchFootage(job: PipelineJobRow, content: ContentRow) {
+  const base = (process.env.WORKER_PUBLIC_BASE_URL ?? "https://sibermas.rizquna.id/generated").replace(/\/$/, "");
+  const topic = String(content.topic || "Sibermas UIN SAIZU");
+  const title = String(content.selected_title || content.topic || topic);
+  const script = (content.script ?? {}) as { narration?: string };
+
+  let plan: Awaited<ReturnType<typeof generateFootageKeywords>> = null;
+  if (process.env.SNIFOX_API_KEY) {
+    plan = await generateFootageKeywords({ topic, title, narration: script.narration });
+  }
+
+  await insertRow("content_assets", {
+    content_id: job.content_id,
+    asset_type: "footage",
+    storage_url: `${base}/${job.content_id}-footage.txt`,
+    provider: plan ? "snifox" : "placeholder",
+    metadata: plan
+      ? { ...plan, generated_at: new Date().toISOString() }
+      : { note: "Stock footage keywords prepared; connect Pexels for real clips.", generated_at: new Date().toISOString() },
   });
 }
 
