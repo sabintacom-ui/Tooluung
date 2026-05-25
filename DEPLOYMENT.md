@@ -225,30 +225,85 @@ NODE_ENV=production
 PORT=3100
 ```
 
-## Cron (External Trigger)
+## Cron (systemd Timer — Installed)
 
-Vercel cron tidak digunakan lagi. Pakai **systemd timer** atau **external cron** (`cron-job.org` / GitHub Actions) untuk panggil:
+Vercel cron tidak dipakai lagi. Auto-trigger ditangani oleh **systemd timer** di server, fires every 15 minutes.
 
-```bash
-# systemd timer di server, every 15 min
-curl -fsS -X POST https://sibermas.rizquna.id/api/pipeline/trigger \
-  -H "x-worker-secret: $WORKER_SECRET" \
-  --max-time 290
-```
+### Components
 
-Atau buat file `/etc/systemd/system/sibermas-trigger.timer`:
+**Wrapper script:** `scripts/trigger-cron.sh` (dideploy lewat git push)
+- Baca `WORKER_SECRET` dari `.env.production`
+- POST `https://sibermas.rizquna.id/api/pipeline/trigger` dengan `x-worker-secret`
+- Timeout 290s, log ke `~/sibermas-worker/logs/trigger-cron.log` (auto-rotate 500 lines)
 
+**Service unit:** `/etc/systemd/system/sibermas-trigger.service`
 ```ini
 [Unit]
-Description=Sibermas pipeline trigger every 15 min
+Description=Sibermas YT pipeline auto-trigger (oneshot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=rizqunaid
+Group=rizqunaid
+WorkingDirectory=/home/rizqunaid/sibermas-yt
+ExecStart=/bin/bash /home/rizqunaid/sibermas-yt/scripts/trigger-cron.sh
+TimeoutSec=300
+Nice=10
+```
+
+**Timer unit:** `/etc/systemd/system/sibermas-trigger.timer`
+```ini
+[Unit]
+Description=Run Sibermas YT pipeline trigger every 15 minutes
+Requires=sibermas-trigger.service
 
 [Timer]
-OnBootSec=2min
+OnBootSec=3min
 OnUnitActiveSec=15min
+AccuracySec=30s
 Unit=sibermas-trigger.service
+Persistent=true
 
 [Install]
 WantedBy=timers.target
+```
+
+### Management
+
+```bash
+# Status timer + next fire time
+systemctl list-timers sibermas-trigger.timer
+
+# Manual fire (test)
+sudo systemctl start sibermas-trigger.service
+
+# Disable / re-enable
+sudo systemctl disable sibermas-trigger.timer
+sudo systemctl enable --now sibermas-trigger.timer
+
+# Live logs
+sudo journalctl -u sibermas-trigger.service -f
+
+# Cron log (curl output)
+tail -f ~/sibermas-worker/logs/trigger-cron.log
+```
+
+### Tuning Interval
+
+Pipeline orchestrator memproses **1 step per request**. Total 7 step → ~1.75 jam untuk job selesai dari trigger pertama dengan interval 15 min.
+
+**Untuk faster throughput:**
+
+- Ubah `OnUnitActiveSec=5min` → 7 step × 5 min = 35 min per job
+- Atau modifikasi `trigger-cron.sh` untuk loop 7× per firing:
+```bash
+for i in {1..7}; do
+  curl -sS -X POST "$BASE_URL/api/pipeline/trigger" \
+    -H "x-worker-secret: $WORKER_SECRET" --max-time 60
+  sleep 3
+done
 ```
 
 ## Post-Deploy Verification
