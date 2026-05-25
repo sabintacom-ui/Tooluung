@@ -1,126 +1,301 @@
-# Production Deployment Guide — sibermas-YT
+# Production Deployment Guide — sibermas-YT (Self-Hosted)
 
-Status pengerjaan: **In Progress**. File ini diperbarui seiring eksekusi.
+Status: **Production ✅** — Deployed di `https://sibermas.rizquna.id`
 
-## Arsitektur Produksi
+## Arsitektur Produksi (Self-Hosted)
 
 ```
-                       ┌────────────────────────────┐
-   User (Browser) ───▶ │  Vercel: Next.js Frontend  │
-                       │  + API Routes (nodejs)     │
-                       └─────────────┬──────────────┘
+                      ┌──────────────────────────────────────┐
+   User (Browser) ───▶│  Cloudflare Edge (CDN + WAF)         │
+                      │  DNS: sibermas.rizquna.id (proxied)  │
+                      └──────────────┬───────────────────────┘
+                                     │ Cloudflare Tunnel "9router"
+                                     │ (c46b4521-...cfargotunnel.com)
+                                     ▼
+   ┌────────────────────────────────────────────────────────────┐
+   │  Server 192.168.18.210 (Ubuntu 24.04, Node 24, PM2 6)       │
+   │                                                              │
+   │  ┌─────────────────────┐    ┌─────────────────────────────┐│
+   │  │ nginx :8080         │───▶│ Next.js :3100 (PM2)         ││
+   │  │                     │    │ /home/rizqunaid/sibermas-yt ││
+   │  │ /generated/* ──────▶│    │                              ││
+   │  │   alias filesystem  │    │ /api/*  /  /generated/[id]   ││
+   │  └─────────┬───────────┘    └──────────┬──────────────────┘│
+   │            ▼                            ▼                    │
+   │  /home/rizqunaid/sibermas-worker/output/*.mp4                │
+   │  (ffmpeg render via local SSH wrapper)                       │
+   └────────────────────────────────────────────────────────────┘
                                      │
-                  ┌──────────────────┼──────────────────────────┐
-                  ▼                  ▼                          ▼
-       ┌──────────────────┐  ┌──────────────┐    ┌──────────────────────┐
-       │  Supabase        │  │  Google      │    │  Remote SSH Worker   │
-       │  (PostgreSQL +   │  │  YouTube API │    │  192.168.18.210      │
-       │   Storage opt.)  │  │  (OAuth)     │    │  + ffmpeg + nginx    │
-       └──────────────────┘  └──────────────┘    └──────────────────────┘
+              ┌──────────────────────┼──────────────────────┐
+              ▼                      ▼                      ▼
+        ┌──────────┐         ┌──────────────┐      ┌────────────────┐
+        │ Supabase │         │ YouTube API  │      │ Snifox AI      │
+        │ Postgres │         │ (OAuth)      │      │ Claude Opus    │
+        └──────────┘         └──────────────┘      └────────────────┘
 ```
 
-## Checklist Production-Ready
+## Stack
 
-### Code (✅ Selesai)
-- [x] Build pass (`npm run build`)
-- [x] Lint clean (`npm run lint`)
-- [x] Timing-safe token comparison
-- [x] SSRF guard di YouTube upload
-- [x] UUID validation pada query params
-- [x] Shell quoting pada ffmpeg args
-- [x] Security headers di next.config.ts
-- [x] Node.js runtime ditetapkan eksplisit
-- [x] SSH ffmpeg smoke test pass
+| Komponen | Detail |
+|---|---|
+| Runtime | Node.js 24.14.0 |
+| Process manager | PM2 6.0.14 (`ecosystem.config.js`) |
+| Web server | nginx 1.24 (port 8080, reverse proxy ke :3100) |
+| Public tunnel | Cloudflared 2026.5.0 (tunnel `9router`, systemd) |
+| Framework | Next.js 16.2.6 (Turbopack, production build) |
+| Database | Supabase PostgreSQL (managed) |
+| AI script | Snifox `anthropic/claude-opus-4.7` |
+| Render | ffmpeg 6.1.1 via local SSH wrapper |
 
-### Infrastructure (Pending)
-- [ ] `npm audit fix` — resolve 2 moderate vulnerabilities
-- [ ] nginx di server remote untuk static serve `~/sibermas-worker/output/`
-- [ ] SSL certificate untuk `sibermas.rizquna.id`
-- [ ] Reachability dari Vercel ke server (public IP / Cloudflare Tunnel / Tailscale)
-- [ ] DNS A record `sibermas.rizquna.id`
-
-### Env Vars di Vercel (Pending)
-Wajib diisi di Vercel Project Settings → Environment Variables (Production):
+## Server Layout
 
 ```
-ADMIN_API_TOKEN=<random 32+ chars>
-WORKER_SECRET=<random 32+ chars>
-
-SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service role key>
-NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
-
-GOOGLE_CLIENT_ID=<oauth client id>
-GOOGLE_CLIENT_SECRET=<oauth client secret>
-GOOGLE_REFRESH_TOKEN=<refresh token with youtube.upload scope>
-
-SSH_HOST=<public hostname atau tunnel hostname>
-SSH_PORT=22
-SSH_USER=rizqunaid
-SSH_PRIVATE_KEY=<isi id_ed25519, multiline. ganti \n dengan \\n di Vercel UI>
-WORKER_REMOTE_DIR=~/sibermas-worker/output
-WORKER_PUBLIC_BASE_URL=https://sibermas.rizquna.id/generated
-
-ALLOWED_VIDEO_HOSTS=supabase.co,public.blob.vercel-storage.com,sibermas.rizquna.id
-MAX_VIDEO_UPLOAD_BYTES=262144000
-
-# Optional (Legacy GAS)
-GAS_WEB_APP_URL=<gas web app url>
-GAS_WEBHOOK_SECRET=<shared secret>
-
-# Optional (AI providers)
-OPENAI_API_KEY=
-ELEVENLABS_API_KEY=
-PEXELS_API_KEY=
-SUNO_API_KEY=
-IDEOGRAM_API_KEY=
+/home/rizqunaid/
+├── git-repos/sibermas-yt.git/        # Bare repo + post-receive hook
+├── sibermas-yt/                       # Deployed code (working tree)
+│   ├── .env.production                # Server secrets (mode 600)
+│   ├── ecosystem.config.js
+│   ├── .next/                         # Build output
+│   └── ...
+└── sibermas-worker/
+    ├── output/                        # ffmpeg renders + smoke-test.mp4
+    └── logs/
+        ├── sibermas-out.log
+        └── sibermas-err.log
 ```
 
-### Vercel Cron (Pending)
-Tambahkan `vercel.json`:
-```json
-{
-  "crons": [
-    { "path": "/api/pipeline/trigger", "schedule": "*/2 * * * *" }
-  ]
+## Deploy Workflow
+
+### Initial Setup (sudah dilakukan)
+```bash
+# Server side: bare repo + hook
+ssh rizqunaid@192.168.18.210
+mkdir -p ~/git-repos/sibermas-yt.git
+cd ~/git-repos/sibermas-yt.git && git init --bare
+# (hook ada di hooks/post-receive — auto npm ci + build + pm2 reload)
+
+# Mac side: git init + remote
+cd /Users/macm4/Documents/YT
+git init -b main
+git remote add server ssh://rizqunaid@192.168.18.210/home/rizqunaid/git-repos/sibermas-yt.git
+```
+
+### Deploy Update
+```bash
+# Dari Mac: code change → push → auto deploy
+git add -A
+git commit -m "feat: <change>"
+git push server main
+# post-receive hook akan:
+#   1. git checkout -f main → /home/rizqunaid/sibermas-yt
+#   2. npm ci
+#   3. npm run build
+#   4. pm2 reload sibermas-yt (atau start ecosystem.config.js)
+```
+
+### Manual Restart
+```bash
+ssh rizqunaid@192.168.18.210 'pm2 restart sibermas --update-env'
+ssh rizqunaid@192.168.18.210 'pm2 logs sibermas --lines 50 --nostream'
+```
+
+### Auto-start on Reboot
+```bash
+# Sudah configured: pm2 save + pm2 startup systemd
+sudo systemctl status pm2-rizqunaid
+sudo systemctl status cloudflared-rizquna
+sudo systemctl status nginx
+```
+
+## nginx Config
+
+File: `/etc/nginx/sites-available/sibermas.rizquna.id`
+
+```nginx
+server {
+    listen 8080;
+    listen [::]:8080;
+    server_name sibermas.rizquna.id;
+
+    # Serve generated assets (mp4/mp3/png/jpg/txt)
+    location /generated/ {
+        alias /home/rizqunaid/sibermas-worker/output/;
+        autoindex off;
+        add_header Cache-Control "public, max-age=3600";
+        add_header X-Content-Type-Options "nosniff";
+        types {
+            video/mp4 mp4;
+            audio/mpeg mp3;
+            image/png png;
+            image/jpeg jpg jpeg;
+            text/plain txt;
+        }
+        location ~ \.(mp4|mp3|png|jpe?g|txt|webm|webp|wav)$ {
+            try_files $uri =404;
+        }
+        location ~ / { return 403; }
+    }
+
+    # Proxy everything else to Next.js
+    location / {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+    }
+
+    client_max_body_size 50M;
 }
 ```
-Catatan: cron Vercel tidak bisa kirim custom header. Solusi:
-- Pakai Vercel Cron + token via query param (kurang aman), atau
-- External cron (cron-job.org / GitHub Actions) → POST dengan `x-worker-secret`.
 
-### Database (Pending)
-- [ ] Jalankan `supabase/schema.sql` di Supabase SQL Editor
-- [ ] Seed minimal: 1 user, 1 channel, 1 template
-- [ ] Verifikasi RLS policies (semua tabel sudah `ENABLE ROW LEVEL SECURITY`, akses via service role)
+## Cloudflare Tunnel Config
 
-### Monitoring (Pending)
-- [ ] `/api/health` endpoint
-- [ ] Sentry / Logflare untuk error tracking (opsional)
-- [ ] Vercel Analytics enabled
+File: `/home/rizqunaid/.cloudflared/config.yml`
+
+```yaml
+tunnel: c46b4521-4f6d-4258-a958-2c66c1ebdf1b
+credentials-file: /home/rizqunaid/.cloudflared/c46b4521-4f6d-4258-a958-2c66c1ebdf1b.json
+
+ingress:
+  - hostname: rizquna.id
+    service: http://localhost:80
+  - hostname: invoice.rizquna.id
+    service: http://localhost:8000
+  - hostname: router.rizquna.id
+    service: http://localhost:20128
+  - hostname: wa.rizquna.id
+    service: http://localhost:8088
+  - hostname: sibermas.rizquna.id
+    service: http://localhost:8080
+  - service: http_status:404
+```
+
+Systemd: `/etc/systemd/system/cloudflared-rizquna.service`
+
+```bash
+sudo systemctl restart cloudflared-rizquna
+sudo journalctl -u cloudflared-rizquna -f
+```
+
+## Env Vars (`.env.production` di server)
+
+⚠️ File ini **TIDAK** di-commit ke git. Lokasi: `/home/rizqunaid/sibermas-yt/.env.production` (mode 600)
+
+```env
+# Auth
+ADMIN_API_TOKEN=imam-admin-2026-yt-automator
+WORKER_SECRET=<random-32+>
+NEXTAUTH_SECRET=<random-32+>
+
+# Supabase
+SUPABASE_URL=https://uylhsgcatreonlpmguio.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://uylhsgcatreonlpmguio.supabase.co
+SUPABASE_ANON_KEY=<anon>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon>
+SUPABASE_SERVICE_ROLE_KEY=<service>
+
+# Google YouTube
+GOOGLE_CLIENT_ID=<oauth-id>
+GOOGLE_CLIENT_SECRET=<oauth-secret>
+GOOGLE_REFRESH_TOKEN=<refresh-with-youtube.upload>
+
+# Snifox AI
+SNIFOX_API_KEY=snfx-...
+SNIFOX_BASE_URL=https://core.snifoxai.com/v1
+SNIFOX_MODEL=anthropic/claude-opus-4.7
+
+# SSH (loop ke localhost untuk ffmpeg)
+SSH_HOST=127.0.0.1
+SSH_PORT=22
+SSH_USER=rizqunaid
+SSH_PRIVATE_KEY_B64=<base64-of-id_ed25519>
+WORKER_REMOTE_DIR=/home/rizqunaid/sibermas-worker/output
+WORKER_PUBLIC_BASE_URL=https://sibermas.rizquna.id/generated
+
+# YouTube guards
+ALLOWED_VIDEO_HOSTS=sibermas.rizquna.id,supabase.co
+MAX_VIDEO_UPLOAD_BYTES=536870912
+
+NODE_ENV=production
+PORT=3100
+```
+
+## Cron (External Trigger)
+
+Vercel cron tidak digunakan lagi. Pakai **systemd timer** atau **external cron** (`cron-job.org` / GitHub Actions) untuk panggil:
+
+```bash
+# systemd timer di server, every 15 min
+curl -fsS -X POST https://sibermas.rizquna.id/api/pipeline/trigger \
+  -H "x-worker-secret: $WORKER_SECRET" \
+  --max-time 290
+```
+
+Atau buat file `/etc/systemd/system/sibermas-trigger.timer`:
+
+```ini
+[Unit]
+Description=Sibermas pipeline trigger every 15 min
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Unit=sibermas-trigger.service
+
+[Install]
+WantedBy=timers.target
+```
 
 ## Post-Deploy Verification
 
 ```bash
-# Health check
-curl https://<your-vercel-app>.vercel.app/api/health
+# Health
+curl https://sibermas.rizquna.id/api/health | jq
 
-# Test admin auth
+# Admin
+curl -H "x-admin-token: imam-admin-2026-yt-automator" \
+  https://sibermas.rizquna.id/api/pipeline/recent | jq
+
+# YouTube OAuth status
 curl -H "x-admin-token: $ADMIN_API_TOKEN" \
-  https://<app>.vercel.app/api/pipeline/recent
+  https://sibermas.rizquna.id/api/youtube/status | jq
 
-# Test YouTube OAuth
-curl -H "x-admin-token: $ADMIN_API_TOKEN" \
-  https://<app>.vercel.app/api/youtube/status
-
-# Trigger pipeline manual
+# Manual trigger
 curl -X POST -H "x-worker-secret: $WORKER_SECRET" \
-  https://<app>.vercel.app/api/pipeline/trigger
+  https://sibermas.rizquna.id/api/pipeline/trigger | jq
+
+# Run full E2E
+BASE_URL=https://sibermas.rizquna.id \
+ADMIN_TOKEN=imam-admin-2026-yt-automator \
+bash scripts/e2e-test.sh
 ```
 
 ## Known Limitations
 
-- Vercel serverless timeout: 300s (Pro) untuk `/api/pipeline/trigger`. Render ffmpeg via SSH harus selesai dalam window itu.
-- YouTube API quota: 10.000 unit/hari, upload = 1.600 unit → max ~6 video/hari/project.
-- Worker remote single point of failure. Backup: integrasi Supabase Storage + Cloud Run worker.
+- **Single-server**: tidak HA. Backup strategi: snapshot disk + Supabase managed.
+- **YouTube quota**: 10.000 unit/hari, upload = 1.600 unit → max ~6 video/hari/project.
+- **No SSE/WebSocket** untuk live status (polling via `/api/pipeline/status`).
+- **ffmpeg = placeholder**: 12-detik blank video dengan drawtext. Production butuh integrasi TTS (ElevenLabs/Suno) + footage (Pexels) + image gen (Ideogram).
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| HTTP 502 dari Cloudflare | `pm2 status sibermas`, `curl http://127.0.0.1:3100/api/health` |
+| HTTP 404 di `/generated/*.mp4` | `ls /home/rizqunaid/sibermas-worker/output/`, `sudo nginx -t` |
+| Pipeline stuck `pending` | `curl POST /api/pipeline/trigger`, cek `pipeline_logs` di Supabase |
+| Build fail di hook | `pm2 logs sibermas`, `ssh server 'cd ~/sibermas-yt && npm run build'` |
+| Tunnel 502 | `sudo systemctl restart cloudflared-rizquna`, cek `journalctl -u cloudflared-rizquna -f` |
+
+## Verified E2E (May 25, 2026)
+
+✅ Job `56675b6a-9bc7-426a-8e17-0343c4d99afb` — completed 7/7 steps  
+✅ YouTube video: https://www.youtube.com/watch?v=wrvep-tsPHs (private)  
+✅ Rendered MP4: `https://sibermas.rizquna.id/generated/a0c56815-71a9-4c61-afa5-9f320110a352.mp4` (53KB)  
+✅ Snifox AI generated Indonesian script + 14 tags + chapters  
+✅ Public HTTPS health check: `{"ok":true, ...12 checks pass}`
