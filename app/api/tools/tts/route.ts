@@ -6,13 +6,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const VOICE_MAP: Record<string, string> = {
-  rachel: "21m00Tcm4TlvDq8ikWAM",
-  domi: "AZnzlk1XvdvUeBnXmlld",
-  bella: "EXAVITQu4vr4xnSDxMaL",
-  antoni: "ErXwobaYiN019PkySvjV",
-  josh: "TxGEqnHWrfWFTfGW9XjX",
-  adam: "pNInz6obpgDQGcFmaJgB",
-  sam: "yoZ06aMxZJJ28mfd3POQ",
+  // Free-tier accessible voices (work without paid subscription)
+  rachel: "9BWtsMINqrJLrRacOk9x", // Aria - female warm
+  domi: "EXAVITQu4vr4xnSDxMaL", // Sarah - female soft
+  bella: "9BWtsMINqrJLrRacOk9x", // Aria fallback
+  antoni: "CwhRBWXzGAHq8TQ4Fs17", // Roger - male confident
+  josh: "onwK4e9ZLuTAKqWW03F9", // Daniel - male deep
+  adam: "IKne3meq5aSn9XLyUdCD", // Charlie - male natural
+  sam: "CwhRBWXzGAHq8TQ4Fs17", // Roger fallback
 };
 
 export async function POST(req: Request) {
