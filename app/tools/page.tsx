@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ALL_TOOLS } from "@/lib/tools/registry";
 
+// Force revalidation every 60 seconds
+export const revalidate = 60;
+
 export const metadata = {
   title: "Pusat Alat Konten Kreator — Sibermas UIN SAIZU",
   description:
