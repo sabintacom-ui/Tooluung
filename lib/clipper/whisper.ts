@@ -50,9 +50,10 @@ print("OK")
 `.trim();
 
   const scriptPath = `${outDir}/_run_${outBaseName}.py`;
+  const scriptB64 = Buffer.from(script).toString("base64");
   const cmd = [
     `mkdir -p ${shq(outDir)}`,
-    `cat > ${shq(scriptPath)} <<'PYEOF'\n${script}\nPYEOF`,
+    `echo ${shq(scriptB64)} | base64 -d > ${shq(scriptPath)}`,
     `${WHISPER_PYTHON} ${shq(scriptPath)} ${shq(remoteInputPath)} ${shq(srtPath)} ${shq(language)} ${shq(model)} 2>&1 | tail -5`,
     `rm -f ${shq(scriptPath)}`,
   ].join(" && ");
