@@ -42,43 +42,58 @@ export async function renderVerticalShort(input: {
   const channel = input.sourceChannel ? sanitizeForDrawtext(`Source: ${input.sourceChannel}`) : "";
   const brand = sanitizeForDrawtext(BRAND_NAME);
 
-  const filters: string[] = [];
-  // Smart crop: scale to fit width, center-crop height, then pad to 1080x1920 if needed.
-  filters.push("scale=1080:-2:force_original_aspect_ratio=increase");
-  filters.push("crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2");
-  // Burn subtitles if available
-  if (input.srtPath) {
-    const ass = input.srtPath.replace(/'/g, "\\\\'");
-    filters.push(
-      `subtitles=${shq(input.srtPath).slice(1, -1)}:force_style='Fontname=Sans,Fontsize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=240'`
-    );
-  }
-  // Top hook text
-  if (hook) {
-    filters.push(
-      `drawtext=text='${hook}':fontcolor=white:fontsize=44:x=(w-text_w)/2:y=120:box=1:boxcolor=black@0.55:boxborderw=20`
-    );
-  }
-  // Branding (bottom-left)
-  filters.push(
-    `drawtext=text='${brand}':fontcolor=white@0.85:fontsize=24:x=24:y=h-th-24:box=1:boxcolor=black@0.4:boxborderw=10`
+  // Build filter_complex: blur-pad style (foreground centered, blurred background fills 9:16).
+  // 1) bg: scale-cover to 1080x1920 + heavy blur
+  // 2) fg: scale-fit to fit within 1080x1920 (preserves all content)
+  // 3) overlay fg on bg, centered
+  // 4) optional subtitles burn-in
+  // 5) optional drawtext (hook top, brand bottom-left, channel bottom-right)
+  const fcChain: string[] = [];
+  fcChain.push("[0:v]split=2[bgsrc][fgsrc]");
+  fcChain.push(
+    "[bgsrc]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=30[bg]",
   );
-  // Source attribution (bottom-right) if provided
-  if (channel) {
-    filters.push(
-      `drawtext=text='${channel}':fontcolor=white@0.85:fontsize=20:x=w-text_w-24:y=h-th-24:box=1:boxcolor=black@0.4:boxborderw=10`
+  fcChain.push(
+    "[fgsrc]scale=1080:1920:force_original_aspect_ratio=decrease[fg]",
+  );
+
+  let lastLabel = "[v0]";
+  fcChain.push(`[bg][fg]overlay=(W-w)/2:(H-h)/2${lastLabel}`);
+
+  if (input.srtPath) {
+    const srtEsc = input.srtPath.replace(/\\/g, "\\\\\\\\").replace(/'/g, "\\\\'").replace(/:/g, "\\\\:");
+    const next = "[v1]";
+    fcChain.push(
+      `${lastLabel}subtitles='${srtEsc}':force_style='Fontname=Sans,Fontsize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=240'${next}`,
     );
+    lastLabel = next;
   }
-  const vf = filters.join(",");
+  if (hook) {
+    const next = "[v2]";
+    fcChain.push(
+      `${lastLabel}drawtext=text='${hook}':fontcolor=white:fontsize=44:x=(w-text_w)/2:y=120:box=1:boxcolor=black@0.55:boxborderw=20${next}`,
+    );
+    lastLabel = next;
+  }
+  {
+    const next = "[v3]";
+    fcChain.push(
+      `${lastLabel}drawtext=text='${brand}':fontcolor=white@0.85:fontsize=24:x=24:y=h-th-24:box=1:boxcolor=black@0.4:boxborderw=10${next}`,
+    );
+    lastLabel = next;
+  }
+  if (channel) {
+    const next = "[v4]";
+    fcChain.push(
+      `${lastLabel}drawtext=text='${channel}':fontcolor=white@0.85:fontsize=20:x=w-text_w-24:y=h-th-24:box=1:boxcolor=black@0.4:boxborderw=10${next}`,
+    );
+    lastLabel = next;
+  }
+  const filterComplex = fcChain.join(";");
 
   const cmd = [
     `mkdir -p ${shq(outDir)}`,
-    `ffmpeg -y -i ${shq(input.rawClipPath)} \
--vf ${shq(vf)} \
--c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p \
--c:a aac -b:a 128k -ar 44100 \
--movflags +faststart \
-${shq(outPath)} 2>&1 | tail -20`,
+    `ffmpeg -y -i ${shq(input.rawClipPath)} -filter_complex ${shq(filterComplex)} -map ${shq(lastLabel)} -map 0:a? -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -c:a aac -b:a 128k -ar 44100 -movflags +faststart ${shq(outPath)} 2>&1 | tail -20`,
   ].join(" && ");
 
   const result = await sshExec(cmd, { timeoutMs: 600_000 });
