@@ -1,0 +1,13 @@
+[Unit]
+Description=Sibermas Clipper daily run (06:00 WIB)
+
+[Timer]
+# 06:00 WIB = 23:00 UTC the previous day; server may run in WIB or UTC.
+# Using OnCalendar with explicit timezone via system tz.
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=sibermas-clipper.service
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

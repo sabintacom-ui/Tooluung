@@ -1,0 +1,11 @@
+[Unit]
+Description=Sibermas Clipper auto-discover + queue + process
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /home/rizqunaid/sibermas-yt/scripts/clipper-cron.sh
+TimeoutStartSec=2700
+StandardOutput=append:/home/rizqunaid/sibermas-worker/logs/clipper-cron-systemd.log
+StandardError=append:/home/rizqunaid/sibermas-worker/logs/clipper-cron-systemd.log
