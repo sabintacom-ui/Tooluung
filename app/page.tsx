@@ -1,480 +1,576 @@
-"use client";
+import Link from "next/link";
+import { ALL_TOOLS } from "@/lib/tools/registry";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
-
-type QueueItem = {
-  id: string;
-  driveFileId: string;
-  title: string;
-  schedule: string;
-  status: "Pending" | "Uploading" | "Success" | "Failed";
-  youtubeUrl?: string;
-  error?: string;
+export const metadata = {
+  title: "Pusat Alat Konten Kreator — Sibermas UIN SAIZU",
+  description:
+    "47+ Tools AI internal untuk konten kreator dakwah & edukasi: Generator video, Clipper Shorts, SEO, Thumbnail, Voice, Music, dan lainnya — semua langsung di Sibermas.",
 };
 
-type PipelineJob = {
-  id: string;
-  status: string;
-  current_step?: string | null;
-  steps_completed?: string[] | null;
+type FeaturedTool = {
+  emoji: string;
+  label: string;
+  href: string;
+  badge?: "NEW" | "BETA";
 };
 
-type YouTubeVideo = {
-  id: string;
-  youtube_url: string;
-  youtube_video_id: string;
-  privacy_status?: string;
-};
-
-type RecentJob = PipelineJob & {
-  contents?: { topic?: string; selected_title?: string; status?: string } | null;
-  youtube_videos?: YouTubeVideo[];
-};
-
-const DEFAULT_CHANNEL_ID = "c419026c-6c5a-4999-98c4-bd64131d5d72";
-const DEFAULT_TEMPLATE_ID = "5f93c244-4a7a-40df-bfd3-011a311bf286";
-
-const PIPELINE_STEPS = [
-  { key: "generate_script", label: "Script", icon: "1" },
-  { key: "generate_voice", label: "Suara", icon: "2" },
-  { key: "generate_music", label: "Musik", icon: "3" },
-  { key: "generate_thumbnail", label: "Thumb", icon: "4" },
-  { key: "fetch_footage", label: "Footage", icon: "5" },
-  { key: "render_video", label: "Render", icon: "6" },
-  { key: "upload_youtube", label: "Upload", icon: "7" },
+// Sibermas native (heavy backend pipeline tools)
+const FEATURED: FeaturedTool[] = [
+  { emoji: "🎬", label: "VIDEO GENERATOR", href: "/generator", badge: "NEW" },
+  { emoji: "✂️", label: "CLIPPER SHORTS", href: "/clipper", badge: "NEW" },
 ];
 
-const QUICK_ACTIONS = [
-  { icon: "🎬", title: "Generate Video", desc: "Pipeline AI 7-langkah", href: "#pipeline", featured: true, isNew: true },
-  { icon: "📋", title: "Antrean", desc: "Drive → YouTube", href: "#queue" },
-  { icon: "📚", title: "Riwayat", desc: "Semua produksi", href: "#history" },
-  { icon: "✅", title: "Health Check", desc: "Status sistem", href: "/api/health" },
-  { icon: "▶️", title: "YouTube OAuth", desc: "Refresh token", href: "/api/youtube/status" },
-  { icon: "📡", title: "Manual Trigger", desc: "x-worker-secret", href: "#pipeline" },
+// Group order for display
+const CATEGORY_ORDER = [
+  "konten",
+  "seo",
+  "visual",
+  "thumbnail",
+  "suno",
+  "music",
+  "spoken",
+  "audio",
+  "utility",
 ];
 
-function getYouTubeThumb(videoId: string): string {
-  return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-}
+const CATEGORY_LABEL: Record<string, string> = {
+  konten: "📅 Konten & Planning",
+  seo: "🔍 SEO & YouTube",
+  visual: "🎨 Visual & Image",
+  thumbnail: "📐 Thumbnail Studio",
+  suno: "🎶 Suno / Music Lyric",
+  music: "🎵 Music Production",
+  spoken: "🗣️ Spoken Word & Religi",
+  audio: "🎙️ Voice & Audio",
+  utility: "🛠️ Utilities & Reference",
+};
 
-export default function Home() {
-  const [items, setItems] = useState<QueueItem[]>([]);
-  const [message, setMessage] = useState("");
-  const [adminToken, setAdminToken] = useState("");
-  const [pipelineJob, setPipelineJob] = useState<PipelineJob | null>(null);
-  const [pipelineVideos, setPipelineVideos] = useState<YouTubeVideo[]>([]);
-  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
-  const [pipelineMessage, setPipelineMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const [showInstall, setShowInstall] = useState(false);
-
-  async function loadQueue() {
-    if (!adminToken) {
-      setMessage("Masukkan admin token");
-      return;
-    }
-    const response = await fetch("/api/queue", { cache: "no-store", headers: { "x-admin-token": adminToken } });
-    const data = await response.json();
-    if (!data.ok) throw new Error(data.error ?? "Gagal memuat queue");
-    setItems(data.items ?? []);
+function ToolCard({
+  href,
+  emoji,
+  label,
+  badge,
+  idx,
+  external = false,
+}: {
+  href: string;
+  emoji: string;
+  label: string;
+  badge?: string;
+  idx: number;
+  external?: boolean;
+}) {
+  const inner = (
+    <>
+      <span className="tool-emoji">{emoji}</span>
+      <span className="tool-label">{label}</span>
+      {badge ? <div className={`badge-${badge.toLowerCase()}`}>{badge}</div> : null}
+    </>
+  );
+  const style = { animationDelay: `${Math.min(idx * 0.02, 0.6)}s` } as React.CSSProperties;
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="tool-button" style={style}>
+        {inner}
+      </a>
+    );
   }
-
-  useEffect(() => {
-    const savedToken = window.sessionStorage.getItem("sibermas-yt-admin-token") ?? "";
-    setAdminToken(savedToken);
-
-    // PWA install prompt
-    let installEvt: any = null;
-    const onInstall = (e: any) => {
-      e.preventDefault();
-      installEvt = e;
-      (window as any).__sibermasInstallEvt = e;
-      setShowInstall(true);
-    };
-    window.addEventListener("beforeinstallprompt", onInstall);
-    return () => window.removeEventListener("beforeinstallprompt", onInstall);
-  }, []);
-
-  const loadRecentJobs = useCallback(async () => {
-    if (!adminToken) return;
-    const response = await fetch("/api/pipeline/recent", { cache: "no-store", headers: { "x-admin-token": adminToken } });
-    const data = await response.json();
-    if (!data.ok) throw new Error(data.error ?? "Gagal memuat riwayat");
-    setRecentJobs(data.jobs ?? []);
-  }, [adminToken]);
-
-  useEffect(() => {
-    if (!adminToken) return;
-    window.sessionStorage.setItem("sibermas-yt-admin-token", adminToken);
-    fetch("/api/queue", { cache: "no-store", headers: { "x-admin-token": adminToken } })
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.ok) throw new Error(data.error ?? "Gagal memuat queue");
-        setItems(data.items ?? []);
-      })
-      .catch((error) => setMessage(error.message));
-    loadRecentJobs().catch((error) => setPipelineMessage(error.message));
-  }, [adminToken, loadRecentJobs]);
-
-  // Auto-refresh polling tiap 8 detik kalau ada job running
-  useEffect(() => {
-    if (!adminToken) return;
-    const hasRunning = recentJobs.some((j) => j.status === "running" || j.status === "pending");
-    if (!hasRunning) return;
-    const t = setInterval(() => {
-      loadRecentJobs().catch(() => {});
-      if (pipelineJob?.id) refreshPipeline(pipelineJob.id).catch(() => {});
-    }, 8000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, recentJobs, pipelineJob?.id]);
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
-    const form = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(form.entries());
-
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/queue", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
-          body: JSON.stringify(payload),
-        });
-        const data = await response.json();
-        if (!data.ok) throw new Error(data.error ?? "Gagal menyimpan");
-        setMessage(`Masuk queue: ${data.id}`);
-        event.currentTarget.reset();
-        await loadQueue();
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Gagal menyimpan");
-      }
-    });
-  }
-
-  function startPipeline(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPipelineMessage("");
-    const formPayload = Object.fromEntries(new FormData(event.currentTarget).entries());
-    const payload = { ...formPayload, keywords: String(formPayload.keywords ?? "").split(",").map((k) => k.trim()).filter(Boolean) };
-
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/pipeline/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
-          body: JSON.stringify(payload),
-        });
-        const data = await response.json();
-        if (!data.ok) throw new Error(data.error ?? "Gagal memulai pipeline");
-        setPipelineJob({ id: data.jobId, status: data.status, current_step: data.currentStep, steps_completed: [] });
-        setPipelineVideos([]);
-        setPipelineMessage(`Job dibuat: ${data.jobId}`);
-        await loadRecentJobs();
-      } catch (error) {
-        setPipelineMessage(error instanceof Error ? error.message : "Gagal memulai pipeline");
-      }
-    });
-  }
-
-  async function refreshPipeline(jobId?: string) {
-    const id = jobId || pipelineJob?.id;
-    if (!id) {
-      setPipelineMessage("Job ID wajib diisi");
-      return;
-    }
-    const response = await fetch(`/api/pipeline/status?id=${encodeURIComponent(id)}`, { headers: { "x-admin-token": adminToken } });
-    const data = await response.json();
-    if (!data.ok) throw new Error(data.error ?? "Gagal memuat pipeline");
-    setPipelineJob(data.job);
-    setPipelineVideos(data.videos ?? []);
-    await loadRecentJobs();
-  }
-
-  const stats = useMemo(() => ({
-    total: recentJobs.length,
-    done: recentJobs.filter((j) => j.status === "completed").length,
-    running: recentJobs.filter((j) => j.status === "running" || j.status === "pending").length,
-    uploads: recentJobs.reduce((sum, j) => sum + (j.youtube_videos?.length ?? 0), 0),
-  }), [recentJobs]);
-
-  async function handleInstall() {
-    const evt = (window as any).__sibermasInstallEvt;
-    if (evt) {
-      evt.prompt();
-      await evt.userChoice;
-      setShowInstall(false);
-    }
-  }
-
   return (
-    <main className="shell">
-      {/* TOP NAV */}
-      <nav className="nav">
-        <div className="brand">
-          <div className="brand-logo">SY</div>
-          <div>
-            <div>sibermas-YT</div>
-            <small>Sibermas UIN SAIZU</small>
-          </div>
-        </div>
-        <div className="nav-actions">
-          <span className="badge-online">{stats.running > 0 ? `${stats.running} aktif` : "Online"}</span>
-          <a className="btn-secondary" href="https://github.com" target="_blank" rel="noreferrer">Docs</a>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section className="hero">
-        <div className="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
-        <div className="eyebrow">otomasi konten youtube</div>
-        <h1>Dashboard Kreator Sibermas UIN SAIZU</h1>
-        <p className="lede">Generate skrip dengan AI, render video di server lokal, dan publish ke YouTube — semua dalam satu pipeline otomatis.</p>
-        <div className="hero-cta">
-          <a className="btn-primary" href="#pipeline">🚀 Mulai Generate</a>
-          <a className="btn-secondary" href="#history">📚 Lihat Riwayat</a>
-        </div>
-      </section>
-
-      {/* ADMIN TOKEN */}
-      <section className="card">
-        <div className="card-title-row">
-          <div className="card-icon">🔐</div>
-          <div>
-            <h2>Admin Token</h2>
-            <p className="muted">Dibutuhkan untuk akses dashboard data privat</p>
-          </div>
-        </div>
-        <label>
-          Token
-          <input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="ADMIN_API_TOKEN dari .env.production" />
-        </label>
-      </section>
-
-      {/* STATS */}
-      <section className="stats">
-        <article className="stat s-total">
-          <div className="stat-icon">📊</div>
-          <span className="stat-label">Total Job</span>
-          <strong className="stat-value">{stats.total}</strong>
-        </article>
-        <article className="stat s-done">
-          <div className="stat-icon">✅</div>
-          <span className="stat-label">Selesai</span>
-          <strong className="stat-value">{stats.done}</strong>
-        </article>
-        <article className="stat s-run">
-          <div className="stat-icon">⚡</div>
-          <span className="stat-label">Berjalan</span>
-          <strong className="stat-value">{stats.running}</strong>
-        </article>
-        <article className="stat s-up">
-          <div className="stat-icon">▶️</div>
-          <span className="stat-label">Diupload</span>
-          <strong className="stat-value">{stats.uploads}</strong>
-        </article>
-      </section>
-
-      {/* QUICK ACTIONS */}
-      <section className="actions-grid">
-        {QUICK_ACTIONS.map((act) => (
-          <a key={act.title} href={act.href} className={`action-tile ${act.featured ? "featured" : ""}`}>
-            <div className="action-icon">{act.icon}</div>
-            <div className="action-title">
-              {act.title} {act.isNew && <span className="new-pill">NEW</span>}
-            </div>
-            <div className="action-desc">{act.desc}</div>
-          </a>
-        ))}
-      </section>
-
-      {/* PIPELINE GENERATE */}
-      <section id="pipeline" className="card">
-        <div className="card-title-row">
-          <div className="card-icon">🎬</div>
-          <div>
-            <h2>Generate Video</h2>
-            <p className="muted">Pipeline 7-langkah: AI script → render → YouTube</p>
-          </div>
-        </div>
-
-        <form className="pipelineForm" onSubmit={startPipeline}>
-          <input type="hidden" name="channelId" value={DEFAULT_CHANNEL_ID} />
-          <input type="hidden" name="templateId" value={DEFAULT_TEMPLATE_ID} />
-          <label>
-            Topik Video
-            <input name="topic" required maxLength={500} placeholder="Contoh: Profil singkat Sibermas UIN SAIZU" />
-          </label>
-          <label>
-            Target Audiens
-            <input name="targetAudience" defaultValue="mahasiswa dan masyarakat umum" />
-          </label>
-          <label>
-            Keyword (pisah koma)
-            <input name="keywords" defaultValue="sibermas, uin saizu, edukasi" />
-          </label>
-          <label>
-            Catatan / Brief
-            <textarea name="notes" rows={4} placeholder="Arahan gaya, poin penting, CTA, durasi…" />
-          </label>
-          <label>
-            Jadwal (opsional)
-            <input name="scheduledAt" type="datetime-local" />
-          </label>
-          <button disabled={isPending}>{isPending ? "Memulai…" : "🚀 Generate Video"}</button>
-        </form>
-
-        {pipelineJob && (
-          <div className="pipeline-progress">
-            <div className="card-head">
-              <h3>Progress: {pipelineJob.id.slice(0, 8)}…</h3>
-              <span className={`status-chip ${pipelineJob.status}`}>{pipelineJob.status}</span>
-            </div>
-            <div className="progress-steps">
-              {PIPELINE_STEPS.map((step) => {
-                const completed = pipelineJob.steps_completed ?? [];
-                const isDone = completed.includes(step.key);
-                const isActive = pipelineJob.current_step === step.key;
-                return (
-                  <div key={step.key} className={`step ${isDone ? "done" : ""} ${isActive ? "active" : ""}`}>
-                    <div className="step-icon">{isDone ? "✓" : step.icon}</div>
-                    <div className="step-label">{step.label}</div>
-                  </div>
-                );
-              })}
-            </div>
-            {pipelineVideos.length > 0 && (
-              <div className="items">
-                {pipelineVideos.map((v) => (
-                  <article className="item" key={v.id}>
-                    <div className="item-row">
-                      <strong>🎉 Video terupload</strong>
-                      <span className="status-chip completed">{v.privacy_status ?? "private"}</span>
-                    </div>
-                    <a href={v.youtube_url} target="_blank" rel="noreferrer">▶️ Buka di YouTube</a>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="card-head" style={{ marginTop: 16 }}>
-          <h3>Cek Status Job</h3>
-          <button className="ghost" type="button" onClick={() => refreshPipeline().catch((e) => setPipelineMessage(e.message))}>Refresh</button>
-        </div>
-        <label>
-          Job ID
-          <input placeholder="Paste job ID untuk lacak progress" onBlur={(e) => e.currentTarget.value && refreshPipeline(e.currentTarget.value).catch((err) => setPipelineMessage(err.message))} />
-        </label>
-        {pipelineMessage && <p className="notice">{pipelineMessage}</p>}
-      </section>
-
-      {/* LEGACY QUEUE */}
-      <section id="queue" className="grid">
-        <form className="card" onSubmit={submit}>
-          <div className="card-title-row">
-            <div className="card-icon">📋</div>
-            <div>
-              <h2>Tambah ke Queue</h2>
-              <p className="muted">Upload langsung dari Google Drive (legacy)</p>
-            </div>
-          </div>
-          <label>Google Drive File ID<input name="driveFileId" required placeholder="1AbC…" /></label>
-          <label>Judul<input name="title" required maxLength={100} placeholder="Judul video" /></label>
-          <label>Deskripsi<textarea name="description" rows={4} placeholder="Deskripsi YouTube" /></label>
-          <label>Tags<input name="tags" placeholder="shorts, tutorial, ai" /></label>
-          <div className="row">
-            <label>Kategori<input name="category" defaultValue="22" /></label>
-            <label>Visibilitas<select name="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></label>
-          </div>
-          <label>Jadwal<input name="schedule" type="datetime-local" required /></label>
-          <button disabled={isPending}>{isPending ? "Menyimpan…" : "➕ Masukkan Queue"}</button>
-          {message && <p className="notice">{message}</p>}
-        </form>
-
-        <section className="card">
-          <div className="card-head">
-            <div className="card-title-row">
-              <div className="card-icon">🗂️</div>
-              <h2>Queue Aktif</h2>
-            </div>
-            <button className="ghost" onClick={() => loadQueue().catch((e) => setMessage(e.message))}>Refresh</button>
-          </div>
-          <div className="items">
-            {items.length === 0 && <p className="muted">Belum ada data di queue.</p>}
-            {items.map((item) => (
-              <article className="item" key={item.id}>
-                <div className="item-row">
-                  <strong>{item.title}</strong>
-                  <span className={`status-chip ${item.status.toLowerCase()}`}>{item.status}</span>
-                </div>
-                <div className="item-meta">📅 {item.schedule}</div>
-                {item.youtubeUrl && <a href={item.youtubeUrl} target="_blank" rel="noreferrer">▶️ YouTube</a>}
-                {item.error && <small className="muted">{item.error}</small>}
-              </article>
-            ))}
-          </div>
-        </section>
-      </section>
-
-      {/* HISTORY */}
-      <section id="history" className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <div className="card-icon">📚</div>
-            <h2>Riwayat Produksi</h2>
-          </div>
-          <button className="ghost" onClick={() => loadRecentJobs().catch((e) => setPipelineMessage(e.message))}>Refresh</button>
-        </div>
-        <div className="items">
-          {recentJobs.length === 0 && <p className="muted">Belum ada riwayat. Mulai generate video pertama!</p>}
-          {recentJobs.map((job) => {
-            const yt = job.youtube_videos?.[0];
-            const thumb = yt?.youtube_video_id ? getYouTubeThumb(yt.youtube_video_id) : null;
-            return (
-              <article className="history-item" key={job.id}>
-                <div className="history-thumb">{thumb ? <img src={thumb} alt="" /> : "🎬"}</div>
-                <div className="history-body">
-                  <div className="history-title">{job.contents?.selected_title || job.contents?.topic || job.id}</div>
-                  <div className="history-meta">
-                    <span className={`status-chip ${job.status}`}>{job.status}</span>
-                    {job.current_step && <span style={{ marginLeft: 8 }}>· {job.current_step}</span>}
-                  </div>
-                  <div className="history-steps">{(job.steps_completed ?? []).length}/7 langkah selesai</div>
-                </div>
-                {yt?.youtube_url && <a href={yt.youtube_url} target="_blank" rel="noreferrer">▶️ Buka</a>}
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="footer">
-        <strong>sibermas-YT</strong> — Otomasi konten YouTube untuk <strong>Sibermas UIN SAIZU</strong>
-        <div className="footer-links">
-          <a href="/api/health">Health</a>
-          <a href="/api/youtube/status">YouTube</a>
-          <a href="https://uin-saizu.ac.id" target="_blank" rel="noreferrer">UIN SAIZU</a>
-        </div>
-        <p style={{ marginTop: 10, fontSize: ".78rem" }}>© 2026 sibermas-YT · Powered by Next.js + Snifox AI + Supabase</p>
-      </footer>
-
-      {/* PWA INSTALL BANNER */}
-      {showInstall && (
-        <div className="install-banner">
-          <div className="install-banner-text">
-            <h4>📲 Install sibermas-YT</h4>
-            <p>Buka lebih cepat seperti aplikasi</p>
-          </div>
-          <div className="install-actions">
-            <button onClick={handleInstall}>Install</button>
-            <button className="ghost" onClick={() => setShowInstall(false)}>Nanti</button>
-          </div>
-        </div>
-      )}
-    </main>
+    <Link href={href} className="tool-button" style={style}>
+      {inner}
+    </Link>
   );
 }
+
+export default function ToolsPage() {
+  // Group registry tools by category
+  const grouped = new Map<string, typeof ALL_TOOLS>();
+  for (const tool of ALL_TOOLS) {
+    const arr = grouped.get(tool.category) || [];
+    arr.push(tool);
+    grouped.set(tool.category, arr);
+  }
+
+  const totalTools = FEATURED.length + ALL_TOOLS.length;
+
+  return (
+    <div className="tools-root">
+      <style>{toolsCss}</style>
+      <div className="container">
+        <div className="hero-section">
+          <div className="hero-badge">
+            <span className="badge-line" />
+            <span className="dot" /> {totalTools}+ Tools AI Konten Kreator
+            <span className="badge-line" />
+          </div>
+          <h1>Sibermas UIN SAIZU</h1>
+          <div className="hero-subtitle">
+            👑 Pusat <span className="gold">Alat</span> & Sumber Daya{" "}
+            <span className="gold">Konten Kreator</span> Dakwah ⭐
+          </div>
+          <div className="hero-tagline-box">
+            <p className="tagline-text">
+              Bismillahirrahmanirrahim · Konten dakwah & edukasi dengan AI ⚡
+            </p>
+          </div>
+          <div className="hero-admin-box">
+            <div className="admin-item">
+              <span className="admin-icon">🌐</span> sibermas.rizquna.id
+            </div>
+            <div className="admin-divider" />
+            <div className="admin-item">
+              <span className="admin-icon">🎯</span> Sibermas UIN SAIZU
+            </div>
+          </div>
+          <div className="hero-line" />
+          <div className="live-online-box">
+            <span className="live-online-dot" />
+            <span className="live-online-num">{totalTools}</span>
+            <span className="live-online-label">Tools Tersedia</span>
+          </div>
+        </div>
+
+        {/* Featured: Sibermas native pipelines */}
+        <h2 className="section-title">⚡ Featured · Pipeline Otomatis</h2>
+        <div className="button-grid">
+          {FEATURED.map((tool, idx) => (
+            <ToolCard key={tool.label} {...tool} idx={idx} />
+          ))}
+        </div>
+
+        {/* Registry tools by category */}
+        {CATEGORY_ORDER.map((cat) => {
+          const tools = grouped.get(cat) || [];
+          if (tools.length === 0) return null;
+          return (
+            <div key={cat}>
+              <h2 className="section-title">{CATEGORY_LABEL[cat] || cat}</h2>
+              <div className="button-grid">
+                {tools.map((tool, idx) => (
+                  <ToolCard
+                    key={tool.slug}
+                    href={`/tools/${tool.slug}`}
+                    emoji={tool.emoji}
+                    label={tool.label}
+                    badge={tool.badge}
+                    idx={idx}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="ticker-wrapper">
+        <div className="ticker-content">
+          ✨ Sibermas Pusat Studi & Riset Cyber Mahasiswa UIN SAIZU Purwokerto · Konten Dakwah, Edukasi, dan Inovasi Mahasiswa · Hubungi admin via{" "}
+          <a href="https://wa.me/6287884242420" target="_blank" rel="noreferrer">WhatsApp</a> atau{" "}
+          <a href="https://uinsaizu.ac.id" target="_blank" rel="noreferrer">uinsaizu.ac.id</a>
+        </div>
+      </div>
+
+      <div className="motivasi-quote">
+        <p>&ldquo;Kerjakan Lebih, Jika Ingin Hasil Lebih&rdquo;</p>
+        <span>By Sibermas UIN SAIZU</span>
+      </div>
+
+      <footer>
+        <p>&copy; 2026 Sibermas UIN SAIZU. All rights reserved. | Lokasi: Purwokerto, Jawa Tengah</p>
+      </footer>
+    </div>
+  );
+}
+
+const toolsCss = `
+.tools-root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #080b14;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.tools-root * { box-sizing: border-box; }
+.tools-root .container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 2rem 2rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Hero */
+.tools-root .hero-section {
+  text-align: center;
+  padding: 3.5rem 2.5rem;
+  margin-bottom: 2.5rem;
+  width: 100%;
+  position: relative;
+  background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 40%, rgba(250,204,21,0.04) 100%);
+  backdrop-filter: blur(40px) saturate(1.8);
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 60px rgba(0,0,0,0.5), 0 2px 4px rgba(255,255,255,0.02) inset;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tools-root .hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 100%;
+  background: radial-gradient(ellipse, rgba(250,204,21,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.tools-root .hero-section > * { position: relative; z-index: 1; }
+
+.tools-root .hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 22px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #facc15;
+  margin-bottom: 1.8rem;
+  letter-spacing: 0.5px;
+  animation: fadeInUp 0.6s ease-out;
+}
+.tools-root .hero-badge .dot {
+  width: 7px;
+  height: 7px;
+  background: #facc15;
+  border-radius: 50%;
+  animation: pulse-dot 1.5s infinite;
+  box-shadow: 0 0 8px rgba(250,204,21,0.8);
+}
+.tools-root .hero-badge .badge-line {
+  width: 40px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(250,204,21,0.5));
+}
+.tools-root .hero-badge .badge-line:last-child {
+  background: linear-gradient(90deg, rgba(250,204,21,0.5), transparent);
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.6); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tools-root h1 {
+  font-family: 'Dancing Script', 'Brush Script MT', cursive;
+  font-size: 4rem;
+  font-style: italic;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffe066 0%, #facc15 30%, #d4a017 60%, #b8860b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  margin-bottom: 1.2rem;
+  filter: drop-shadow(0 0 15px rgba(250,204,21,0.5));
+  animation: visionGlow 4s ease-in-out infinite alternate, fadeInUp 0.8s ease-out;
+}
+@keyframes visionGlow {
+  from { filter: drop-shadow(0 0 10px rgba(250,204,21,0.4)); }
+  to { filter: drop-shadow(0 0 25px rgba(250,204,21,0.7)); }
+}
+.tools-root .hero-subtitle {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 1.8rem;
+  letter-spacing: 0.3px;
+}
+.tools-root .hero-subtitle .gold { color: #facc15; font-weight: 700; }
+
+.tools-root .hero-tagline-box,
+.tools-root .hero-admin-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 50px;
+  margin-bottom: 1.2rem;
+  width: fit-content;
+  max-width: 90%;
+  min-height: 52px;
+}
+.tools-root .hero-admin-box { gap: 0; margin-bottom: 1.5rem; }
+.tools-root .tagline-text { font-size: 1rem; font-weight: 500; color: rgba(255,255,255,0.85); margin: 0; }
+.tools-root .admin-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  padding: 0 16px;
+}
+.tools-root .admin-icon { font-size: 1.1rem; }
+.tools-root .admin-divider { width: 1.5px; height: 20px; background: rgba(255,255,255,0.12); }
+.tools-root .hero-line {
+  width: 120px;
+  height: 1px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, transparent, rgba(250,204,21,0.4), transparent);
+  opacity: 0.8;
+}
+
+.tools-root .live-online-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 1.2rem;
+  padding: 9px 20px;
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 100px;
+  backdrop-filter: blur(20px);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.tools-root .live-online-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(34,197,94,0.8);
+  animation: live-pulse 1.6s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55), 0 0 8px rgba(34,197,94,0.8); }
+  70% { box-shadow: 0 0 0 10px rgba(34,197,94,0), 0 0 8px rgba(34,197,94,0.8); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0), 0 0 8px rgba(34,197,94,0.8); }
+}
+.tools-root .live-online-num {
+  min-width: 4ch;
+  text-align: center;
+  color: #4ade80;
+  font-weight: 800;
+  font-size: 1rem;
+}
+.tools-root .live-online-label { color: rgba(255,255,255,0.75); font-weight: 500; }
+
+/* Section title */
+.tools-root .section-title {
+  width: 100%;
+  margin: 2.5rem 0 1rem;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.tools-root .section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(250,204,21,0.3), transparent);
+  margin-left: 0.5rem;
+}
+
+/* Button Grid */
+.tools-root .button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+  width: 100%;
+}
+.tools-root .tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.8rem 1.4rem;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  color: #e0e0e0;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 2px rgba(255,255,255,0.02) inset;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInScale 0.5s ease-out backwards;
+}
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+.tools-root .tool-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(250,204,21,0.06), transparent);
+  transition: left 0.5s;
+}
+.tools-root .tool-button:hover::before { left: 100%; }
+.tools-root .tool-button:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: rgba(250,204,21,0.7);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(250,204,21,0.4), 0 0 18px rgba(250,204,21,0.3);
+  background: rgba(250,204,21,0.04);
+}
+.tools-root .tool-button:active { transform: translateY(-2px) scale(0.98); }
+
+.tools-root .tool-emoji {
+  font-size: 2.3rem;
+  margin-bottom: 0.6rem;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.tools-root .tool-button:hover .tool-emoji {
+  transform: scale(1.15) rotate(3deg);
+  filter: drop-shadow(0 0 10px rgba(250,204,21,0.6));
+}
+.tools-root .tool-label { font-size: 0.95rem; line-height: 1.3; }
+
+.tools-root .badge-new,
+.tools-root .badge-beta {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 6px;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+.tools-root .badge-new {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #000;
+  box-shadow: 0 2px 12px rgba(250,204,21,0.5);
+}
+.tools-root .badge-beta {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(139,92,246,0.5);
+}
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(250,204,21,0.4); }
+  50% { box-shadow: 0 2px 24px rgba(250,204,21,0.9); }
+}
+
+.tools-root .ticker-wrapper {
+  width: 100%;
+  background: rgba(8,11,20,0.98);
+  padding: 1rem 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: auto;
+  position: relative;
+}
+.tools-root .ticker-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #facc15, transparent);
+  animation: tickerGlow 2s ease-in-out infinite;
+}
+@keyframes tickerGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.tools-root .ticker-content {
+  display: inline-block;
+  padding-left: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #facc15;
+  animation: marquee 30s linear infinite;
+}
+.tools-root .ticker-content a { color: #facc15; text-decoration: none; font-weight: 700; }
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.tools-root .motivasi-quote {
+  text-align: center;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: linear-gradient(135deg, rgba(20,24,40,0.8) 0%, rgba(12,14,28,0.9) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(250,204,21,0.15);
+  max-width: 800px;
+  width: 90%;
+}
+.tools-root .motivasi-quote p {
+  font-size: 1.4rem;
+  font-style: italic;
+  font-weight: 700;
+  color: #facc15;
+  margin: 0 0 0.8rem;
+  line-height: 1.4;
+}
+.tools-root .motivasi-quote span {
+  font-size: 1rem;
+  color: #888;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.tools-root footer {
+  width: 100%;
+  background: rgba(5,7,15,0.98);
+  color: #666;
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(250,204,21,0.08);
+}
+
+@media (max-width: 768px) {
+  .tools-root .container { padding: 1.5rem 1rem 3rem; }
+  .tools-root .hero-section { padding: 2.5rem 1.5rem; border-radius: 24px; }
+  .tools-root h1 { font-size: 2.8rem; }
+  .tools-root .hero-subtitle { font-size: 1rem; }
+  .tools-root .button-grid { grid-template-columns: 1fr; gap: 0.9rem; }
+  .tools-root .tool-button { padding: 1.4rem 1rem; }
+  .tools-root .tool-emoji { font-size: 1.9rem; }
+  .tools-root .section-title { font-size: 1.15rem; margin: 2rem 0 0.8rem; }
+  .tools-root .motivasi-quote p { font-size: 1.2rem; }
+  .tools-root .hero-admin-box { flex-direction: column; gap: 8px; padding: 14px 20px; border-radius: 20px; }
+  .tools-root .admin-divider { width: 40px; height: 1.5px; }
+}
+`;
