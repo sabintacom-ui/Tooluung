@@ -52,6 +52,13 @@ export type RedirectToolConfig = {
   description: string;
 };
 
+export type InfoToolConfig = {
+  kind: "info";
+  content: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+};
+
 export type EmbedToolConfig = {
   kind: "embed";
   embedUrl: string;
@@ -67,5 +74,5 @@ export type Tool = {
   description: string;
   badge?: "NEW" | "BETA";
   fields: ToolField[];
-  config: LlmToolConfig | TtsToolConfig | RedirectToolConfig | EmbedToolConfig;
+  config: LlmToolConfig | TtsToolConfig | RedirectToolConfig | InfoToolConfig | EmbedToolConfig;
 };

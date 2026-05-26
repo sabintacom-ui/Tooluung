@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { ToolRunner } from "./tool-runner";
 import { TtsRunner } from "./tts-runner";
 import { RedirectCard } from "./redirect-card";
+import { InfoCard } from "./info-card";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -26,6 +27,7 @@ export default async function ToolPage({ params }: Params) {
   const isLlm = tool.config.kind === "llm";
   const isTts = tool.config.kind === "tts";
   const isRedirect = tool.config.kind === "redirect";
+  const isInfo = tool.config.kind === "info";
 
   return (
     <div className="tool-page-root">
@@ -50,6 +52,13 @@ export default async function ToolPage({ params }: Params) {
             <RedirectCard
               url={(tool.config as { url: string; description: string }).url}
               description={(tool.config as { url: string; description: string }).description}
+            />
+          ) : null}
+          {isInfo ? (
+            <InfoCard
+              content={(tool.config as { content: string; ctaLabel?: string; ctaUrl?: string }).content}
+              ctaLabel={(tool.config as { content: string; ctaLabel?: string; ctaUrl?: string }).ctaLabel}
+              ctaUrl={(tool.config as { content: string; ctaLabel?: string; ctaUrl?: string }).ctaUrl}
             />
           ) : null}
         </div>
