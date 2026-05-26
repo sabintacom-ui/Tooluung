@@ -10,7 +10,7 @@ export const DAKWAH_TOOLS: Tool[] = [
     slug: "tafsir-singkat",
     emoji: "📖",
     label: "TAFSIR SINGKAT",
-    category: "konten",
+    category: "dakwah",
     description: "Tafsir singkat ayat Al-Quran dari berbagai mufassir untuk konten dakwah.",
     fields: [
       {
@@ -75,7 +75,7 @@ PENTING: Hindari klaim hukum spesifik (haram/halal absolut) tanpa konteks. Jika 
     slug: "hadits-search",
     emoji: "📜",
     label: "HADITS SEARCH",
-    category: "konten",
+    category: "dakwah",
     description: "Cari hadits berdasarkan tema + tampilkan dengan derajat shahih/hasan/dhaif.",
     fields: [
       {
@@ -140,7 +140,7 @@ PENTING:
     slug: "doa-harian",
     emoji: "🤲",
     label: "DOA HARIAN",
-    category: "konten",
+    category: "dakwah",
     description: "Kompilasi doa harian dengan Arab, latin, terjemahan, dan keutamaannya.",
     fields: [
       {
@@ -200,7 +200,7 @@ Prioritaskan doa dari Al-Quran dan hadits shahih (Bukhari, Muslim). Hindari doa 
     slug: "khutbah-generator",
     emoji: "🕌",
     label: "KHUTBAH GENERATOR",
-    category: "konten",
+    category: "dakwah",
     description: "Naskah khutbah Jumat lengkap (rukun + isi + doa penutup).",
     fields: [
       {
@@ -284,7 +284,7 @@ Bahasa: Indonesia formal-santun. Kutipan Arab dengan harakat + transliterasi + t
     slug: "tausyiah-generator",
     emoji: "🌙",
     label: "TAUSYIAH GENERATOR",
-    category: "konten",
+    category: "dakwah",
     description: "Tausyiah singkat 1-3 menit untuk Reels/Shorts/podcast harian.",
     fields: [
       {
@@ -350,7 +350,7 @@ Output:
     slug: "cerita-anak-islami",
     emoji: "🧒",
     label: "CERITA ANAK ISLAMI",
-    category: "konten",
+    category: "dakwah",
     description: "Cerita Islami untuk anak (usia 5-12) dengan pesan moral terselubung.",
     fields: [
       {
@@ -415,7 +415,7 @@ Format sesuai pilihan:
     slug: "quote-islami",
     emoji: "💬",
     label: "QUOTE ISLAMI",
-    category: "konten",
+    category: "dakwah",
     description: "20 quote Islami catchy + atribusi (Quran/Hadits/Ulama) untuk feed sosmed.",
     fields: [
       {
@@ -471,7 +471,7 @@ Aturan:
     slug: "doa-acara",
     emoji: "🎤",
     label: "DOA PENUTUP ACARA",
-    category: "konten",
+    category: "dakwah",
     description: "Naskah doa pembuka/penutup untuk berbagai acara (formal/non-formal).",
     fields: [
       {

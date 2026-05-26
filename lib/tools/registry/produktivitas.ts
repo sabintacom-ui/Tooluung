@@ -10,7 +10,7 @@ export const PRODUKTIVITAS_TOOLS: Tool[] = [
     slug: "ebook-writer",
     emoji: "📚",
     label: "EBOOK WRITER",
-    category: "konten",
+    category: "produktivitas",
     description: "Outline + draft ebook dakwah/edukasi 30-100 halaman dari ide awal.",
     badge: "NEW",
     fields: [
@@ -83,7 +83,7 @@ Tulis chapter 1 lengkap dengan:
     slug: "course-curriculum",
     emoji: "🎓",
     label: "COURSE CURRICULUM",
-    category: "konten",
+    category: "produktivitas",
     description: "Kurikulum kursus online lengkap (silabus + modul + assessment).",
     fields: [
       {
@@ -159,7 +159,7 @@ Project akhir yang demonstrate semua skill yang diajarkan.
     slug: "newsletter-writer",
     emoji: "📧",
     label: "NEWSLETTER WRITER",
-    category: "konten",
+    category: "produktivitas",
     description: "Newsletter mingguan/bulanan dengan struktur engage + retention.",
     fields: [
       {
@@ -230,7 +230,7 @@ Main content (300-500 kata)
     slug: "blog-article",
     emoji: "✍️",
     label: "BLOG ARTICLE WRITER",
-    category: "konten",
+    category: "produktivitas",
     description: "Artikel blog SEO-optimized 1500-3000 kata dengan H2/H3 structure.",
     fields: [
       {
@@ -311,7 +311,7 @@ Bio singkat 1 paragraf
     slug: "email-marketing",
     emoji: "📨",
     label: "EMAIL MARKETING",
-    category: "konten",
+    category: "produktivitas",
     description: "Email marketing series (welcome/nurture/sales) dengan high open-rate.",
     fields: [
       {
@@ -368,7 +368,7 @@ Untuk setiap email:
     slug: "sales-page",
     emoji: "💰",
     label: "SALES PAGE COPY",
-    category: "konten",
+    category: "produktivitas",
     description: "Copy lengkap sales page (long-form) dengan AIDA + objection handling.",
     fields: [
       {
@@ -455,7 +455,7 @@ Strong, urgent
     slug: "translate-id-en",
     emoji: "🌐",
     label: "TRANSLATOR ID-EN",
-    category: "utility",
+    category: "produktivitas",
     description: "Penerjemah ID↔EN konteks-aware (formal/casual/teknis/religi).",
     fields: [
       {
@@ -525,7 +525,7 @@ PENTING: Pertahankan tone aslinya. Untuk religi: pastikan terminologi Islam akur
     slug: "summarizer",
     emoji: "📝",
     label: "TEXT SUMMARIZER",
-    category: "utility",
+    category: "produktivitas",
     description: "Ringkas teks panjang/artikel/transkrip jadi key points + executive summary.",
     fields: [
       {
@@ -574,7 +574,7 @@ Untuk SEMUA format, sertakan di bawahnya:
     slug: "meeting-notes",
     emoji: "📋",
     label: "MEETING NOTES",
-    category: "utility",
+    category: "produktivitas",
     description: "Format transkrip rapat jadi notes profesional dengan action items.",
     fields: [
       {
@@ -632,7 +632,7 @@ PENTING: Akurat dari transkrip. Jangan invent decision yang tidak ada.`,
     slug: "name-generator",
     emoji: "🎯",
     label: "BUSINESS NAME",
-    category: "utility",
+    category: "produktivitas",
     description: "Nama bisnis/startup/produk + tagline + domain availability check hint.",
     fields: [
       {
@@ -693,7 +693,7 @@ Pilih 3 terbaik berdasarkan: memorable + scalable + availability
     slug: "swot-analysis",
     emoji: "📊",
     label: "SWOT ANALYSIS",
-    category: "utility",
+    category: "produktivitas",
     description: "SWOT analysis lengkap untuk bisnis/personal/proyek + action plan.",
     fields: [
       {
@@ -751,7 +751,7 @@ Prioritas action konkret yang harus dijalankan.
     slug: "code-explainer",
     emoji: "💻",
     label: "CODE EXPLAINER",
-    category: "utility",
+    category: "produktivitas",
     description: "Jelaskan code dalam bahasa Indonesia step-by-step (untuk pemula/non-dev).",
     fields: [
       {

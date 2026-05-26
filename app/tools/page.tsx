@@ -23,7 +23,11 @@ const FEATURED: FeaturedTool[] = [
 // Group order for display
 const CATEGORY_ORDER = [
   "konten",
+  "dakwah",
+  "islamic",
   "seo",
+  "social",
+  "produktivitas",
   "visual",
   "thumbnail",
   "suno",
@@ -35,14 +39,18 @@ const CATEGORY_ORDER = [
 
 const CATEGORY_LABEL: Record<string, string> = {
   konten: "📅 Konten & Planning",
+  dakwah: "🕌 Konten Dakwah",
+  islamic: "📿 Ibadah & Fiqih",
   seo: "🔍 SEO & YouTube",
+  social: "📱 Social Media",
+  produktivitas: "🚀 Produktivitas & Bisnis",
   visual: "🎨 Visual & Image",
   thumbnail: "📐 Thumbnail Studio",
   suno: "🎶 Suno / Music Lyric",
   music: "🎵 Music Production",
-  spoken: "🗣️ Spoken Word & Religi",
+  spoken: "🗣️ Spoken Word",
   audio: "🎙️ Voice & Audio",
-  utility: "🛠️ Utilities & Reference",
+  utility: "🛠️ Utilities",
 };
 
 function ToolCard({

@@ -10,7 +10,7 @@ export const ISLAMIC_TOOLS: Tool[] = [
     slug: "kalkulator-zakat",
     emoji: "💰",
     label: "KALKULATOR ZAKAT",
-    category: "konten",
+    category: "islamic",
     description: "Hitung zakat (mal/profesi/perdagangan/emas) + penjelasan fiqih.",
     fields: [
       {
@@ -74,7 +74,7 @@ Ayat/hadits yang jadi dasar perhitungan.
     slug: "kalkulator-waris",
     emoji: "📜",
     label: "KALKULATOR WARIS",
-    category: "konten",
+    category: "islamic",
     description: "Pembagian waris Islam (fara'idh) dengan pembagian sesuai ahli waris.",
     fields: [
       {
@@ -141,7 +141,7 @@ PENTING: Akurasi adalah prioritas. Jangan asal hitung.`,
     slug: "jadwal-puasa",
     emoji: "🌙",
     label: "JADWAL PUASA SUNNAH",
-    category: "konten",
+    category: "islamic",
     description: "Kalender puasa sunnah (Senin Kamis/Ayyamul Bidh/Asyura/Arafah/dll).",
     fields: [
       {
@@ -193,7 +193,7 @@ Saran setting reminder di HP/kalender.`,
     slug: "konsultasi-ibadah",
     emoji: "❓",
     label: "KONSULTASI IBADAH",
-    category: "konten",
+    category: "islamic",
     description: "Tanya jawab fiqih ibadah (shalat/puasa/zakat/haji) dengan dalil.",
     fields: [
       {
@@ -248,7 +248,7 @@ PENTING:
     slug: "doa-pernikahan",
     emoji: "💍",
     label: "DOA PERNIKAHAN",
-    category: "konten",
+    category: "islamic",
     description: "Naskah doa walimatul ursy (pernikahan) lengkap.",
     fields: [
       {
@@ -306,7 +306,7 @@ Format clean untuk MC/penghulu/khatib.`,
     slug: "parenting-islam",
     emoji: "👨‍👩‍👧",
     label: "PARENTING ISLAM",
-    category: "konten",
+    category: "islamic",
     description: "Tips parenting Islami untuk berbagai usia anak (0-18).",
     fields: [
       {
@@ -369,7 +369,7 @@ Aksi konkret yang bisa orang tua lakukan minggu ini.
     slug: "ruqyah-syariah",
     emoji: "🕯️",
     label: "RUQYAH SYAR'IYAH",
-    category: "konten",
+    category: "islamic",
     description: "Bacaan ruqyah syar'iyah dari Quran/Sunnah untuk perlindungan diri.",
     fields: [
       {
@@ -426,7 +426,7 @@ PENTING: Hanya pakai bacaan yang ada dalil shahihnya. Jangan invent.`,
     slug: "wirid-dzikir",
     emoji: "📿",
     label: "WIRID & DZIKIR",
-    category: "konten",
+    category: "islamic",
     description: "Kompilasi wirid pagi-petang + dzikir bakda shalat (autentik dari Sunnah).",
     fields: [
       {

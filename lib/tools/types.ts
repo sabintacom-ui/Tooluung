@@ -15,8 +15,12 @@ export type ToolField = {
 };
 
 export type ToolCategory =
-  | "music"
   | "konten"
+  | "dakwah"
+  | "islamic"
+  | "social"
+  | "produktivitas"
+  | "music"
   | "visual"
   | "thumbnail"
   | "suno"

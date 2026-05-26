@@ -9,7 +9,7 @@ export const SOCIAL_TOOLS: Tool[] = [
     slug: "caption-instagram",
     emoji: "📸",
     label: "CAPTION INSTAGRAM",
-    category: "seo",
+    category: "social",
     description: "Caption Instagram yang engagement-tinggi dengan hashtag + emoji strategis.",
     fields: [
       {
@@ -81,7 +81,7 @@ Aturan emoji: max 5 per caption, pakai di tempat strategis (bukan acak).`,
     slug: "caption-tiktok",
     emoji: "🎵",
     label: "CAPTION TIKTOK",
-    category: "seo",
+    category: "social",
     description: "Caption TikTok + hashtag + sound suggestion untuk maximum reach.",
     fields: [
       {
@@ -138,7 +138,7 @@ Best time + duration sweet spot untuk konten ini`,
     slug: "twitter-thread",
     emoji: "🐦",
     label: "TWITTER/X THREAD",
-    category: "seo",
+    category: "social",
     description: "Thread Twitter/X yang viral-worthy dengan hook + payoff structure.",
     fields: [
       {
@@ -203,7 +203,7 @@ Setelah thread, beri:
     slug: "hashtag-research",
     emoji: "#️⃣",
     label: "HASHTAG RESEARCH",
-    category: "seo",
+    category: "social",
     description: "Riset hashtag tier (mega/macro/niche/long-tail) untuk maximum discoverability.",
     fields: [
       {
@@ -259,7 +259,7 @@ List 3-5 hashtag yang banned/shadowbanned di platform tersebut untuk niche ini.`
     slug: "channel-name",
     emoji: "🏷️",
     label: "CHANNEL NAME GENERATOR",
-    category: "seo",
+    category: "social",
     description: "Generate 20 ide nama channel/akun yang catchy + check availability hint.",
     fields: [
       {
@@ -333,7 +333,7 @@ Per nama:
     slug: "channel-bio",
     emoji: "📝",
     label: "CHANNEL BIO/DESC",
-    category: "seo",
+    category: "social",
     description: "Bio Instagram/TikTok + Description YouTube channel yang convert.",
     fields: [
       {
