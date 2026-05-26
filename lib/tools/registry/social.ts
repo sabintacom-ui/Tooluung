@@ -437,9 +437,9 @@ Struktur:
     ],
     config: {
       kind: "llm",
-      model: "anthropic/claude-opus-4.7",
+      model: "anthropic/claude-sonnet-4.6",
       temperature: 0.75,
-      maxTokens: 5000,
+      maxTokens: 4000,
       systemPrompt: `Tulis naskah podcast lengkap dengan struktur:
 
 ## 0:00-1:00 INTRO
