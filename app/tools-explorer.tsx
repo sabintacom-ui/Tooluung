@@ -1,0 +1,205 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+
+type ToolItem = {
+  slug: string;
+  emoji: string;
+  label: string;
+  description: string;
+  category: string;
+  badge?: "NEW" | "BETA";
+};
+
+type FeaturedItem = {
+  emoji: string;
+  label: string;
+  description: string;
+  href: string;
+  badge?: "NEW" | "BETA";
+};
+
+type Props = {
+  tools: ToolItem[];
+  featured: FeaturedItem[];
+  categoryOrder: string[];
+  categoryLabels: Record<string, string>;
+};
+
+export function ToolsExplorer({ tools, featured, categoryOrder, categoryLabels }: Props) {
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return tools;
+    return tools.filter(
+      (t) =>
+        t.label.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.slug.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q),
+    );
+  }, [tools, query]);
+
+  const grouped = useMemo(() => {
+    const m = new Map<string, ToolItem[]>();
+    for (const t of filtered) {
+      const arr = m.get(t.category) || [];
+      arr.push(t);
+      m.set(t.category, arr);
+    }
+    return m;
+  }, [filtered]);
+
+  const showFeatured = !query.trim();
+  const totalTools = featured.length + tools.length;
+  const filteredCount = filtered.length;
+
+  return (
+    <>
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-num">{totalTools}</div>
+          <div className="stat-label">Total Tools</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{categoryOrder.length}</div>
+          <div className="stat-label">Kategori</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">2</div>
+          <div className="stat-label">Pipeline Otomatis</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">06:00</div>
+          <div className="stat-label">Daily Cron WIB</div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="search-wrapper">
+        <span className="search-icon">🔎</span>
+        <input
+          className="search-input"
+          type="text"
+          placeholder="Cari tool... (nama, kategori, atau topik)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoFocus={false}
+        />
+        {query ? (
+          <button
+            className="search-clear"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        ) : null}
+      </div>
+
+      {query ? (
+        <div className="search-result-info">
+          {filteredCount === 0
+            ? "Tidak ada tool yang cocok"
+            : `Menampilkan ${filteredCount} tool`}{" "}
+          untuk "<strong>{query}</strong>"
+        </div>
+      ) : null}
+
+      {/* Category Nav (sticky) */}
+      {!query.trim() ? (
+        <nav className="category-nav">
+          <a className="category-pill" href="#featured">⚡ Featured</a>
+          {categoryOrder.map((cat) => {
+            const count = (grouped.get(cat) || []).length;
+            if (count === 0) return null;
+            return (
+              <a key={cat} className="category-pill" href={`#cat-${cat}`}>
+                {categoryLabels[cat]?.split(" ")[0] || cat} ({count})
+              </a>
+            );
+          })}
+        </nav>
+      ) : null}
+
+      {/* Featured */}
+      {showFeatured ? (
+        <div id="featured">
+          <h2 className="section-title">⚡ Featured · Pipeline Otomatis</h2>
+          <div className="button-grid">
+            {featured.map((tool, idx) => (
+              <ToolCard key={tool.label} {...tool} idx={idx} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Tools by Category */}
+      {categoryOrder.map((cat) => {
+        const list = grouped.get(cat) || [];
+        if (list.length === 0) return null;
+        return (
+          <div key={cat} id={`cat-${cat}`}>
+            <h2 className="section-title">{categoryLabels[cat] || cat}</h2>
+            <div className="button-grid">
+              {list.map((tool, idx) => (
+                <ToolCard
+                  key={tool.slug}
+                  href={`/tools/${tool.slug}`}
+                  emoji={tool.emoji}
+                  label={tool.label}
+                  description={tool.description}
+                  badge={tool.badge}
+                  idx={idx}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {filteredCount === 0 && query ? (
+        <div className="empty-state">
+          <div className="empty-emoji">🔍</div>
+          <h3>Tidak menemukan tool</h3>
+          <p>
+            Coba kata kunci lain seperti: "skrip", "thumbnail", "doa", "tafsir",
+            "musik", "seo"
+          </p>
+          <button className="btn-clear" onClick={() => setQuery("")}>
+            Tampilkan Semua Tools
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ToolCard({
+  href,
+  emoji,
+  label,
+  description,
+  badge,
+  idx,
+}: {
+  href: string;
+  emoji: string;
+  label: string;
+  description?: string;
+  badge?: string;
+  idx: number;
+}) {
+  const style = { animationDelay: `${Math.min(idx * 0.02, 0.6)}s` } as React.CSSProperties;
+  return (
+    <Link href={href} className="tool-button" style={style} title={description}>
+      <span className="tool-emoji">{emoji}</span>
+      <span className="tool-label">{label}</span>
+      {description ? <span className="tool-desc">{description}</span> : null}
+      {badge ? <div className={`badge-${badge.toLowerCase()}`}>{badge}</div> : null}
+    </Link>
+  );
+}
