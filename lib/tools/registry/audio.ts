@@ -91,11 +91,13 @@ Setelah skrip, beri:
         kind: "select",
         default: "rachel",
         options: [
-          { value: "rachel", label: "Aria (perempuan, hangat)" },
-          { value: "domi", label: "Sarah (perempuan, lembut)" },
-          { value: "antoni", label: "Roger (laki, percaya diri)" },
-          { value: "josh", label: "Daniel (laki, dalam)" },
-          { value: "adam", label: "Charlie (laki, natural)" },
+          { value: "rachel", label: "Sarah (perempuan, mature)" },
+          { value: "domi", label: "Laura (perempuan, ceria)" },
+          { value: "bella", label: "Matilda (perempuan, intelektual)" },
+          { value: "antoni", label: "Roger (laki, santai)" },
+          { value: "josh", label: "Daniel (laki, broadcaster)" },
+          { value: "adam", label: "Charlie (laki, deep)" },
+          { value: "sam", label: "George (laki, warm)" },
         ],
       },
       {
@@ -163,7 +165,7 @@ Output skrip + annotation [pause]/[fast]/[emphasis] strategis.`,
     ],
     config: {
       kind: "tts",
-      voiceId: "9BWtsMINqrJLrRacOk9x",
+      voiceId: "EXAVITQu4vr4xnSDxMaL",
     },
   },
 ];
