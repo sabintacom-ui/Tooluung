@@ -2,6 +2,25 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Scissors,
+  Youtube,
+  Search,
+  Globe,
+  Settings,
+  FileVideo,
+  CheckCircle2,
+  AlertCircle,
+  Play,
+  Lock,
+  RefreshCw,
+  Clock,
+  Sparkles,
+  PlusCircle,
+  X,
+  Sliders,
+  FileText
+} from "lucide-react";
 
 type ClipperSource = {
   id: string;
@@ -62,6 +81,17 @@ export default function ClipperPage() {
   const [busy, setBusy] = useState(false);
   const [autoDiscoverBusy, setAutoDiscoverBusy] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+
+  // Planner Modal state
+  const [selectedSourceForPlan, setSelectedSourceForPlan] = useState<ClipperSource | null>(null);
+  const [planMode, setPlanMode] = useState<"auto" | "manual">("auto");
+  const [numClips, setNumClips] = useState(3);
+  const [minDuration, setMinDuration] = useState(15);
+  const [maxDuration, setMaxDuration] = useState(60);
+  const [startSec, setStartSec] = useState("");
+  const [endSec, setEndSec] = useState("");
+  const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [hookText, setHookText] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("clipper_admin_token");
@@ -136,19 +166,52 @@ export default function ClipperPage() {
     }
   }
 
-  async function handlePlan(sourceId: string) {
-    if (!adminToken) return;
+  // Triggered from our custom Highlight Planner Modal
+  async function executePlan() {
+    if (!adminToken || !selectedSourceForPlan) return;
     setBusy(true);
-    setMessage("🧠 Snifox memilih highlights...");
+    setMessage(planMode === "auto" ? "🧠 Snifox AI sedang mendeteksi highlight terbaik..." : "🎬 Menambahkan pekerjaan pemotongan manual...");
+    const sourceId = selectedSourceForPlan.id;
+
+    // Helper to parse time format e.g. "1:30" or "90"
+    const parseTime = (val: string) => {
+      if (val.includes(":")) {
+        const parts = val.split(":").map(Number);
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      return Number(val);
+    };
+
     try {
+      const payload = planMode === "auto"
+        ? { sourceId, mode: "auto", numClips, minDuration, maxDuration }
+        : {
+            sourceId,
+            mode: "manual",
+            startSec: parseTime(startSec),
+            endSec: parseTime(endSec),
+            suggestedTitle: suggestedTitle || undefined,
+            hookText: hookText || undefined
+          };
+
       const res = await fetch("/api/clipper/clip", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
-        body: JSON.stringify({ sourceId, mode: "auto", numClips: 3 }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Plan gagal");
-      setMessage(`✅ ${data.jobs.length} clip job dibuat`);
+      setMessage(planMode === "auto"
+        ? `✅ ${data.jobs?.length || 0} clip job dibuat secara otomatis`
+        : `✅ Pekerjaan pemotongan manual berhasil dibuat`
+      );
+      setSelectedSourceForPlan(null); // Close modal
+      // Reset form fields
+      setStartSec("");
+      setEndSec("");
+      setSuggestedTitle("");
+      setHookText("");
       loadStatus();
     } catch (err) {
       setMessage(`❌ ${(err as Error).message}`);
@@ -164,7 +227,7 @@ export default function ClipperPage() {
     }
     persistTokens();
     setAutoDiscoverBusy(true);
-    setMessage("🌐 Auto-discover trending Indonesia Indonesia...");
+    setMessage("🌐 Auto-discover trending Indonesia...");
     try {
       const res = await fetch("/api/clipper/discover", {
         method: "POST",
@@ -228,7 +291,9 @@ export default function ClipperPage() {
       {/* TOP NAV */}
       <nav className="nav">
         <div className="brand">
-          <div className="brand-logo">SC</div>
+          <div className="brand-logo">
+            <Scissors size={20} />
+          </div>
           <div>
             <div>sibermas-Clipper</div>
             <small>Sibermas UIN SAIZU</small>
@@ -253,7 +318,9 @@ export default function ClipperPage() {
       {/* ADMIN & WORKER CREDENTIALS */}
       <section className="card">
         <div className="card-title-row">
-          <div className="card-icon">🔐</div>
+          <div className="card-icon">
+            <Lock size={18} />
+          </div>
           <div>
             <h2>Kredensial Otorisasi</h2>
             <p className="muted">Token admin & worker secret untuk sinkronisasi database & memicu pemrosesan</p>
@@ -294,7 +361,10 @@ export default function ClipperPage() {
       {/* QUICK ACTIONS */}
       <section className="actions-section">
         <form onSubmit={handleScan}>
-          <h3>📌 Scan YouTube URL</h3>
+          <h3>
+            <Youtube size={16} style={{ display: "inline", marginRight: 8, verticalAlign: "middle", color: "#ef4444" }} />
+            Scan YouTube URL
+          </h3>
           <p>
             Tempel URL video panjang (kajian/edukasi/dakwah). AI akan membaca metadata dan subtitle untuk diproses.
           </p>
@@ -306,20 +376,23 @@ export default function ClipperPage() {
             required
           />
           <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? "Scanning..." : "🔍 Scan URL"}
+            {busy ? <RefreshCw className="animate-spin" size={16} /> : <Search size={16} />} Scan URL
           </button>
         </form>
 
         <div className="action-card">
-          <h3>🌐 Auto-Discover Trending</h3>
+          <h3>
+            <Sparkles size={16} style={{ display: "inline", marginRight: 8, verticalAlign: "middle", color: "var(--gold)" }} />
+            Auto-Discover Trending
+          </h3>
           <p>
             Cari video trending dakwah/edukasi di Indonesia secara otomatis. 2 video teratas akan langsung di-scan.
           </p>
           <button onClick={handleDiscover} className="btn-gold" disabled={autoDiscoverBusy}>
-            {autoDiscoverBusy ? "Discovering..." : "✨ Discover & Scan"}
+            {autoDiscoverBusy ? <RefreshCw className="animate-spin" size={16} /> : <Globe size={16} />} Discover & Scan
           </button>
           <button onClick={handleTrigger} className="btn-outline-teal" disabled={busy} style={{ marginTop: 'auto' }}>
-            ⚙️ Trigger Clip Worker (1 step)
+            <Settings size={14} /> Trigger Clip Worker (1 step)
           </button>
         </div>
       </section>
@@ -328,10 +401,14 @@ export default function ClipperPage() {
       <section className="card" style={{ marginBottom: 32 }}>
         <div className="card-head">
           <div className="card-title-row">
-            <div className="card-icon">📚</div>
+            <div className="card-icon">
+              <FileVideo size={18} />
+            </div>
             <h2>Kumpulan Video Sumber ({sources.length})</h2>
           </div>
-          <button className="ghost" onClick={loadStatus}>Refresh</button>
+          <button className="ghost" onClick={loadStatus}>
+            <RefreshCw size={14} /> Refresh
+          </button>
         </div>
 
         {sources.length === 0 ? (
@@ -345,7 +422,7 @@ export default function ClipperPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.thumbnail_url} alt={s.title || s.youtube_video_id} />
                   ) : (
-                    "🎬"
+                    <FileVideo size={24} />
                   )}
                 </div>
 
@@ -363,12 +440,15 @@ export default function ClipperPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <button
-                    onClick={() => handlePlan(s.id)}
+                    onClick={() => {
+                      setSelectedSourceForPlan(s);
+                      setPlanMode("auto");
+                    }}
                     disabled={busy}
                     className="btn-primary"
                     style={{ fontSize: '0.8rem', padding: '8px 16px', borderRadius: '100px' }}
                   >
-                    🎯 Auto Plan
+                    <PlusCircle size={14} /> Plan Clips
                   </button>
                   <a
                     href={s.youtube_url}
@@ -390,14 +470,18 @@ export default function ClipperPage() {
       <section className="card">
         <div className="card-head">
           <div className="card-title-row">
-            <div className="card-icon">⚙️</div>
+            <div className="card-icon">
+              <Scissors size={18} />
+            </div>
             <h2>Pekerjaan Pemotongan ({jobs.length})</h2>
           </div>
-          <button className="ghost" onClick={loadStatus}>Refresh</button>
+          <button className="ghost" onClick={loadStatus}>
+            <RefreshCw size={14} /> Refresh
+          </button>
         </div>
 
         {jobs.length === 0 ? (
-          <p className="muted">Belum ada clip job. Klik "Auto Plan" pada video sumber di atas.</p>
+          <p className="muted">Belum ada clip job. Klik "Plan Clips" pada video sumber di atas.</p>
         ) : (
           <div className="items">
             {jobs.map((j) => {
@@ -415,12 +499,14 @@ export default function ClipperPage() {
                       {j.suggested_title || j.hook_text || `Job ID: ${j.id.slice(0, 8)}`}
                     </div>
                     <span className={`status-chip ${j.status}`}>
+                      {isCompleted ? <CheckCircle2 size={12} style={{ marginRight: 4 }} /> : isFailed ? <AlertCircle size={12} style={{ marginRight: 4 }} /> : null}
                       {j.status}
                     </span>
                   </div>
 
                   <div className="job-meta">
-                    ⏱️ Waktu Highlight: <strong>{fmtTime(j.start_sec)}</strong> → <strong>{fmtTime(j.end_sec)}</strong> ({Math.round(j.end_sec - j.start_sec)}s)
+                    <Clock size={12} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
+                    Waktu Highlight: <strong>{fmtTime(j.start_sec)}</strong> → <strong>{fmtTime(j.end_sec)}</strong> ({Math.round(j.end_sec - j.start_sec)}s)
                   </div>
 
                   <div className="job-steps-row">
@@ -445,13 +531,14 @@ export default function ClipperPage() {
                       rel="noopener noreferrer"
                       className="job-link"
                     >
-                      ▶️ Buka Hasil Upload Shorts ({j.youtube_url})
+                      <Play size={12} /> Buka Hasil Upload Shorts ({j.youtube_url})
                     </a>
                   )}
 
                   {j.error_message && (
                     <div className="job-error">
-                      ❌ Error: {j.error_message}
+                      <AlertCircle size={14} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+                      Error: {j.error_message}
                     </div>
                   )}
                 </div>
@@ -460,6 +547,130 @@ export default function ClipperPage() {
           </div>
         )}
       </section>
+
+      {/* HIGHLIGHT PLANNER MODAL */}
+      {selectedSourceForPlan && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h3>Highlight Planner AI</h3>
+              <button 
+                onClick={() => setSelectedSourceForPlan(null)} 
+                className="ghost" 
+                style={{ padding: 6, borderRadius: '50%', width: 32, height: 32, display: 'grid', placeItems: 'center' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div style={{ fontSize: '0.85rem', color: 'var(--muted)', background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 12, border: '1px solid var(--line)' }}>
+                <strong>Target Video:</strong><br />
+                <span style={{ color: 'var(--text-bright)' }}>{selectedSourceForPlan.title || selectedSourceForPlan.youtube_video_id}</span>
+              </div>
+
+              <div className="tab-buttons">
+                <button 
+                  className={`tab-btn ${planMode === 'auto' ? 'active' : ''}`} 
+                  onClick={() => setPlanMode('auto')}
+                >
+                  <Sparkles size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                  Auto Plan (AI)
+                </button>
+                <button 
+                  className={`tab-btn ${planMode === 'manual' ? 'active' : ''}`} 
+                  onClick={() => setPlanMode('manual')}
+                >
+                  <Sliders size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                  Manual Crop
+                </button>
+              </div>
+
+              {planMode === 'auto' ? (
+                <>
+                  <label className="config-label">
+                    Jumlah Klip AI (1-5)
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="5" 
+                      value={numClips} 
+                      onChange={(e) => setNumClips(Number(e.target.value))} 
+                    />
+                  </label>
+                  <div className="row">
+                    <label className="config-label">
+                      Min Durasi (detik)
+                      <input 
+                        type="number" 
+                        value={minDuration} 
+                        onChange={(e) => setMinDuration(Number(e.target.value))} 
+                      />
+                    </label>
+                    <label className="config-label">
+                      Max Durasi (detik)
+                      <input 
+                        type="number" 
+                        value={maxDuration} 
+                        onChange={(e) => setMaxDuration(Number(e.target.value))} 
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="row">
+                    <label className="config-label">
+                      Mulai (e.g. 1:30 atau 90)
+                      <input 
+                        type="text" 
+                        placeholder="0:00" 
+                        value={startSec} 
+                        onChange={(e) => setStartSec(e.target.value)} 
+                      />
+                    </label>
+                    <label className="config-label">
+                      Selesai (e.g. 2:15 atau 135)
+                      <input 
+                        type="text" 
+                        placeholder="1:00" 
+                        value={endSec} 
+                        onChange={(e) => setEndSec(e.target.value)} 
+                      />
+                    </label>
+                  </div>
+                  <label className="config-label">
+                    Judul Klip (Suggested Title)
+                    <input 
+                      type="text" 
+                      placeholder="Judul menarik kajian..." 
+                      value={suggestedTitle} 
+                      onChange={(e) => setSuggestedTitle(e.target.value)} 
+                    />
+                  </label>
+                  <label className="config-label">
+                    Caption Hook Text
+                    <textarea 
+                      placeholder="Deskripsi singkat atau teks hook vertikal..." 
+                      value={hookText} 
+                      onChange={(e) => setHookText(e.target.value)} 
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setSelectedSourceForPlan(null)} className="btn-secondary">
+                Batal
+              </button>
+              <button onClick={executePlan} className="btn-primary" disabled={busy}>
+                {busy ? <RefreshCw className="animate-spin" size={14} /> : <PlusCircle size={14} />} Buat Highlight
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="footer">
