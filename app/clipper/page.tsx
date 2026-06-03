@@ -306,13 +306,26 @@ export default function ClipperPage() {
       </nav>
 
       {/* HERO */}
-      <section className="hero">
-        <div className="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
-        <div className="eyebrow">clipper shorts ai</div>
-        <h1>Otomasi Clip Shorts Kajian & Dakwah</h1>
-        <p className="lede">
-          Potong otomatis video YouTube berdurasi panjang menjadi klip vertikal 9:16 menarik lengkap dengan transkripsi AI dan upload otomatis.
-        </p>
+      <section className="hero split">
+        <div className="hero-left-col">
+          <div className="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+          <div className="eyebrow">clipper shorts ai</div>
+          <h1>Otomasi Clip Shorts Kajian & Dakwah</h1>
+          <p className="lede">
+            Potong otomatis video YouTube berdurasi panjang menjadi klip vertikal 9:16 menarik lengkap dengan transkripsi AI dan upload otomatis.
+          </p>
+        </div>
+
+        <div className="hero-right-col">
+          <div className="hero-image-card">
+            <div className="hero-image-glow" />
+            <img src="/calligraphy-glass.png" alt="Stained Calligraphy AI render" className="hero-showcase-img" />
+            <div className="hero-image-overlay">
+              <span className="overlay-badge">⚡ Clipper Studio</span>
+              <p className="overlay-desc">Auto-Segmenting Whisper Transcription Pipeline</p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ADMIN & WORKER CREDENTIALS */}

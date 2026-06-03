@@ -232,14 +232,27 @@ export default function Home() {
       </nav>
 
       {/* HERO */}
-      <section className="hero">
-        <div className="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
-        <div className="eyebrow">otomasi konten youtube</div>
-        <h1>Dashboard Kreator Sibermas UIN SAIZU</h1>
-        <p className="lede">Generate skrip dengan AI, render video di server lokal, dan publish ke YouTube — semua dalam satu pipeline otomatis.</p>
-        <div className="hero-cta">
-          <a className="btn-primary" href="#pipeline">🚀 Mulai Generate</a>
-          <a className="btn-secondary" href="#history">📚 Lihat Riwayat</a>
+      <section className="hero split">
+        <div className="hero-left-col">
+          <div className="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّ{""}حِيمِ</div>
+          <div className="eyebrow">otomasi konten youtube</div>
+          <h1>Dashboard Kreator Sibermas UIN SAIZU</h1>
+          <p className="lede">Generate skrip dengan AI, render video di server lokal, dan publish ke YouTube — semua dalam satu pipeline otomatis.</p>
+          <div className="hero-cta">
+            <a className="btn-primary" href="#pipeline">🚀 Mulai Generate</a>
+            <a className="btn-secondary" href="#history">📚 Lihat Riwayat</a>
+          </div>
+        </div>
+
+        <div className="hero-right-col">
+          <div className="hero-image-card">
+            <div className="hero-image-glow" />
+            <img src="/cyberpunk-masjid.png" alt="Cyberpunk Masjid AI render" className="hero-showcase-img" />
+            <div className="hero-image-overlay">
+              <span className="overlay-badge">⚡ Video Pipeline Studio</span>
+              <p className="overlay-desc">7-Step Script-to-Upload Automated Video Engine</p>
+            </div>
+          </div>
         </div>
       </section>
 
