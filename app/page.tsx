@@ -132,7 +132,14 @@ export default function Home() {
 
       <footer>
         <p>
-          &copy; 2026 Sibermas UIN SAIZU. All rights reserved. const toolsCss = `
+          &copy; 2026 Sibermas UIN SAIZU. All rights reserved. | Lokasi: Purwokerto, Jawa Tengah
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+const toolsCss = `
 :root {
   --bg: #030807;
   --bg-2: #051410;
