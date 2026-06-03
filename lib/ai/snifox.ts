@@ -29,9 +29,9 @@ export type SnifoxChatResult = {
 function config() {
   const apiKey = process.env.SNIFOX_API_KEY;
   const baseUrl = (process.env.SNIFOX_BASE_URL ?? "https://core.snifoxai.com/v1").replace(/\/$/, "");
-  const model = process.env.SNIFOX_MODEL ?? "anthropic/claude-opus-4.7";
+  const envModel = process.env.SNIFOX_MODEL;
   if (!apiKey) throw new Error("Missing SNIFOX_API_KEY");
-  return { apiKey, baseUrl, model };
+  return { apiKey, baseUrl, envModel };
 }
 
 export async function snifoxChat(input: {
@@ -41,10 +41,10 @@ export async function snifoxChat(input: {
   maxTokens?: number;
   responseFormat?: "text" | "json_object";
 }): Promise<SnifoxChatResult> {
-  const { apiKey, baseUrl, model } = config();
+  const { apiKey, baseUrl, envModel } = config();
 
   const body: Record<string, unknown> = {
-    model: input.model ?? model,
+    model: envModel || input.model || "anthropic/claude-opus-4.7",
     messages: input.messages,
     temperature: input.temperature ?? 0.7,
   };
