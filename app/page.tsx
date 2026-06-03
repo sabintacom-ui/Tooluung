@@ -76,29 +76,42 @@ export default function Home() {
 
       <div className="container">
         {/* Hero */}
-        <div className="hero-section">
-          <div className="hero-badge">
-            <span className="badge-line" />
-            <span className="dot" /> Sibermas UIN SAIZU
-            <span className="badge-line" />
-          </div>
-          <h1>Pusat AI Kreator</h1>
-          <div className="hero-subtitle">
-            <span className="gold">80+ Tools</span> untuk konten dakwah, edukasi, dan kreatif —
-            <span className="gold"> 100% gratis</span> untuk kreator Indonesia
+        <div className="hero-section hero-split-layout">
+          <div className="hero-left-col">
+            <div className="hero-badge">
+              <span className="badge-line" />
+              <span className="dot" /> Sibermas UIN SAIZU
+              <span className="badge-line" />
+            </div>
+            <h1>Pusat AI Kreator</h1>
+            <div className="hero-subtitle">
+              <span className="gold">80+ Tools</span> untuk konten dakwah, edukasi, dan kreatif —
+              <span className="gold"> 100% gratis</span> untuk kreator Indonesia
+            </div>
+
+            <div className="hero-actions">
+              <a href="#featured" className="hero-cta hero-cta-primary">
+                🚀 Mulai Eksplor
+              </a>
+              <Link href="/generator" className="hero-cta hero-cta-secondary">
+                🎬 Generator Video
+              </Link>
+            </div>
+
+            <div className="hero-tagline">
+              ✦ Bismillahirrahmanirrahim ✦
+            </div>
           </div>
 
-          <div className="hero-actions">
-            <a href="#featured" className="hero-cta hero-cta-primary">
-              🚀 Mulai Eksplor
-            </a>
-            <Link href="/generator" className="hero-cta hero-cta-secondary">
-              🎬 Generator Video
-            </Link>
-          </div>
-
-          <div className="hero-tagline">
-            ✦ Bismillahirrahmanirrahim ✦
+          <div className="hero-right-col">
+            <div className="hero-image-card">
+              <div className="hero-image-glow" />
+              <img src="/gemini-image-gen.png" alt="Gemini AI Image Generation Studio" className="hero-showcase-img" />
+              <div className="hero-image-overlay">
+                <span className="overlay-badge">⚡ Powered by Gemini 3.5</span>
+                <p className="overlay-desc">Smart Image Generation & Automation Studio</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -198,7 +211,6 @@ const toolsCss = `
 
 /* === HERO === */
 .tools-root .hero-section {
-  text-align: center;
   padding: 4rem 2.5rem 3.5rem;
   margin-bottom: 2.5rem;
   width: 100%;
@@ -213,6 +225,104 @@ const toolsCss = `
     0 30px 100px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+
+.tools-root .hero-split-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 3rem;
+  text-align: left;
+  padding: 4rem 3rem;
+}
+
+.tools-root .hero-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  z-index: 2;
+}
+
+.tools-root .hero-right-col {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+  perspective: 1000px;
+}
+
+.tools-root .hero-image-card {
+  position: relative;
+  border-radius: 24px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: rotateY(-6deg) rotateX(4deg);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s ease, border-color 0.3s;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.tools-root .hero-image-card:hover {
+  transform: rotateY(0deg) rotateX(0deg) scale(1.02);
+  box-shadow: 0 30px 80px rgba(20, 184, 166, 0.25), 0 0 50px rgba(20, 184, 166, 0.15);
+  border-color: rgba(20, 184, 166, 0.4);
+}
+
+.tools-root .hero-image-glow {
+  position: absolute;
+  inset: -30px;
+  background: radial-gradient(circle at center, rgba(20, 184, 166, 0.25), transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+  animation: glow-pulse 4s infinite alternate;
+}
+
+@keyframes glow-pulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 0.9; transform: scale(1.1); }
+}
+
+.tools-root .hero-showcase-img {
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  border-radius: 18px;
+  display: block;
+  z-index: 2;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tools-root .hero-image-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  padding: 12px 18px;
+  background: rgba(3, 8, 7, 0.82);
+  backdrop-filter: blur(16px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 3;
+}
+
+.tools-root .overlay-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--teal);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.tools-root .overlay-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.3;
 }
 
 .tools-root .hero-badge {
@@ -677,7 +787,258 @@ const toolsCss = `
   line-height: 1.5;
 }
 
+/* === PROMPT SIMULATOR === */
+.tools-root .prompt-simulator-card {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005));
+  backdrop-filter: blur(40px);
+  border: 1px solid var(--card-border);
+  border-radius: 28px;
+  padding: 2.2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.tools-root .prompt-simulator-card::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.1), transparent 60%);
+  pointer-events: none;
+}
+
+.tools-root .simulator-header {
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.tools-root .sim-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, var(--teal-deep), rgba(20, 184, 166, 0.2));
+  color: #5eead4;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(20, 184, 166, 0.2);
+}
+
+.tools-root .simulator-header h3 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+
+.tools-root .simulator-header p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.tools-root .simulator-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.tools-root .simulator-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.tools-root .sim-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tools-root .prompt-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tools-root .prompt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tools-root .prompt-pill:hover {
+  background: rgba(20, 184, 166, 0.06);
+  border-color: rgba(20, 184, 166, 0.25);
+  color: #5eead4;
+}
+
+.tools-root .prompt-pill.active {
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(20, 184, 166, 0.45);
+  color: #5eead4;
+  box-shadow: 0 0 15px rgba(20, 184, 166, 0.15);
+}
+
+.tools-root .prompt-input-box {
+  padding: 18px;
+  background: rgba(2, 10, 8, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.tools-root .prompt-prefix {
+  font-family: monospace;
+  font-size: 0.76rem;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.tools-root .prompt-text-val {
+  font-size: 0.88rem;
+  color: #fff;
+  line-height: 1.4;
+  margin: 0;
+  font-weight: 500;
+}
+
+.tools-root .sim-info-footer {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+
+.tools-root .sim-render-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tools-root .sim-rendered-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tools-root .sim-loader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 8, 7, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.tools-root .sim-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(20, 184, 166, 0.15);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: sim-spin 0.8s linear infinite;
+}
+
+@keyframes sim-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.tools-root .sim-loader-text {
+  font-size: 0.82rem;
+  color: var(--teal);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.tools-root .sim-rendered-meta {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+
+.tools-root .sim-meta-tag {
+  padding: 4px 10px;
+  background: rgba(4, 14, 11, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+}
+
 /* === RESPONSIVE === */
+@media (max-width: 900px) {
+  .tools-root .hero-split-layout {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 3rem 2rem;
+    gap: 2.5rem;
+  }
+  .tools-root .hero-left-col {
+    align-items: center;
+  }
+  .tools-root .hero-right-col {
+    perspective: none;
+  }
+  .tools-root .hero-image-card {
+    transform: none;
+    max-width: 440px;
+  }
+  .tools-root .hero-image-card:hover {
+    transform: scale(1.01);
+  }
+  .tools-root .simulator-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .tools-root .sim-render-viewport {
+    max-width: 440px;
+    margin: 0 auto;
+  }
+}
+
 @media (max-width: 768px) {
   .tools-root .container { padding: 1.5rem 1rem 3rem; }
   .tools-root .hero-section { padding: 2.5rem 1.5rem; border-radius: 24px; }
@@ -700,5 +1061,7 @@ const toolsCss = `
   .tools-root .button-grid { grid-template-columns: 1fr; }
   .tools-root .tool-button { min-height: 100px; }
   .tools-root .stats-grid { grid-template-columns: 1fr; }
+  .tools-root .prompt-simulator-card { padding: 1.5rem 1.2rem; border-radius: 20px; }
+  .tools-root .prompt-pill { padding: 8px 12px; font-size: 0.78rem; }
 }
 `;

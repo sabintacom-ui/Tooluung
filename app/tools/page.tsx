@@ -108,36 +108,49 @@ export default function ToolsPage() {
     <div className="tools-root">
       <style>{toolsCss}</style>
       <div className="container">
-        <div className="hero-section">
-          <div className="hero-badge">
-            <span className="badge-line" />
-            <span className="dot" /> {totalTools}+ Tools AI Konten Kreator
-            <span className="badge-line" />
-          </div>
-          <h1>Sibermas UIN SAIZU</h1>
-          <div className="hero-subtitle">
-            👑 Pusat <span className="gold">Alat</span> & Sumber Daya{" "}
-            <span className="gold">Konten Kreator</span> Dakwah ⭐
-          </div>
-          <div className="hero-tagline-box">
-            <p className="tagline-text">
-              Bismillahirrahmanirrahim · Konten dakwah & edukasi dengan AI ⚡
-            </p>
-          </div>
-          <div className="hero-admin-box">
-            <div className="admin-item">
-              <span className="admin-icon">🌐</span> sibermas.rizquna.id
+        <div className="hero-section hero-split-layout">
+          <div className="hero-left-col">
+            <div className="hero-badge">
+              <span className="badge-line" />
+              <span className="dot" /> {totalTools}+ Tools AI Konten Kreator
+              <span className="badge-line" />
             </div>
-            <div className="admin-divider" />
-            <div className="admin-item">
-              <span className="admin-icon">🎯</span> Sibermas UIN SAIZU
+            <h1>Sibermas UIN SAIZU</h1>
+            <div className="hero-subtitle">
+              👑 Pusat <span className="gold">Alat</span> & Sumber Daya{" "}
+              <span className="gold">Konten Kreator</span> Dakwah ⭐
+            </div>
+            <div className="hero-tagline-box">
+              <p className="tagline-text">
+                Bismillahirrahmanirrahim · Konten dakwah & edukasi dengan AI ⚡
+              </p>
+            </div>
+            <div className="hero-admin-box">
+              <div className="admin-item">
+                <span className="admin-icon">🌐</span> sibermas.rizquna.id
+              </div>
+              <div className="admin-divider" />
+              <div className="admin-item">
+                <span className="admin-icon">🎯</span> Sibermas UIN SAIZU
+              </div>
+            </div>
+            <div className="hero-line" />
+            <div className="live-online-box">
+              <span className="live-online-dot" />
+              <span className="live-online-num">{totalTools}</span>
+              <span className="live-online-label">Tools Tersedia</span>
             </div>
           </div>
-          <div className="hero-line" />
-          <div className="live-online-box">
-            <span className="live-online-dot" />
-            <span className="live-online-num">{totalTools}</span>
-            <span className="live-online-label">Tools Tersedia</span>
+
+          <div className="hero-right-col">
+            <div className="hero-image-card">
+              <div className="hero-image-glow" />
+              <img src="/gemini-image-gen.png" alt="Gemini AI Image Generation Studio" className="hero-showcase-img" />
+              <div className="hero-image-overlay">
+                <span className="overlay-badge">⚡ Powered by Gemini 3.5</span>
+                <p className="overlay-desc">Smart Image Generation & Automation Studio</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -252,7 +265,6 @@ const toolsCss = `
 
 /* === HERO === */
 .tools-root .hero-section {
-  text-align: center;
   padding: 4rem 2.5rem;
   margin-bottom: 2.5rem;
   width: 100%;
@@ -267,9 +279,104 @@ const toolsCss = `
     0 30px 100px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+
+.tools-root .hero-split-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 3rem;
+  text-align: left;
+  padding: 4rem 3rem;
+}
+
+.tools-root .hero-left-col {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  z-index: 2;
+}
+
+.tools-root .hero-right-col {
+  display: flex;
+  justify-content: center;
   align-items: center;
+  z-index: 2;
+  perspective: 1000px;
+}
+
+.tools-root .hero-image-card {
+  position: relative;
+  border-radius: 24px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: rotateY(-6deg) rotateX(4deg);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s ease, border-color 0.3s;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.tools-root .hero-image-card:hover {
+  transform: rotateY(0deg) rotateX(0deg) scale(1.02);
+  box-shadow: 0 30px 80px rgba(20, 184, 166, 0.25), 0 0 50px rgba(20, 184, 166, 0.15);
+  border-color: rgba(20, 184, 166, 0.4);
+}
+
+.tools-root .hero-image-glow {
+  position: absolute;
+  inset: -30px;
+  background: radial-gradient(circle at center, rgba(20, 184, 166, 0.25), transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+  animation: glow-pulse 4s infinite alternate;
+}
+
+@keyframes glow-pulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 0.9; transform: scale(1.1); }
+}
+
+.tools-root .hero-showcase-img {
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  border-radius: 18px;
+  display: block;
+  z-index: 2;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tools-root .hero-image-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  padding: 12px 18px;
+  background: rgba(3, 8, 7, 0.82);
+  backdrop-filter: blur(16px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 3;
+}
+
+.tools-root .overlay-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--teal);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.tools-root .overlay-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.3;
 }
 
 .tools-root .hero-badge {
@@ -580,6 +687,29 @@ const toolsCss = `
   font-size: 0.82rem;
   border-top: 1px solid rgba(20, 184, 166, 0.1);
   line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .tools-root .hero-split-layout {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 3rem 2rem;
+    gap: 2.5rem;
+  }
+  .tools-root .hero-left-col {
+    align-items: center;
+  }
+  .tools-root .hero-right-col {
+    perspective: none;
+  }
+  .tools-root .hero-image-card {
+    transform: none;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+  .tools-root .hero-image-card:hover {
+    transform: scale(1.01);
+  }
 }
 
 @media (max-width: 768px) {
