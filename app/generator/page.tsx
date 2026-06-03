@@ -1,6 +1,25 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import {
+  Video,
+  ListOrdered,
+  History,
+  HeartPulse,
+  Share2,
+  Cpu,
+  Lock,
+  RefreshCw,
+  PlusCircle,
+  Play,
+  ArrowRight,
+  CheckCircle2,
+  AlertTriangle,
+  FolderPlus,
+  Compass,
+  AlertCircle
+} from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -44,15 +63,6 @@ const PIPELINE_STEPS = [
   { key: "upload_youtube", label: "Upload", icon: "7" },
 ];
 
-const QUICK_ACTIONS = [
-  { icon: "🎬", title: "Generate Video", desc: "Pipeline AI 7-langkah", href: "#pipeline", featured: true, isNew: true },
-  { icon: "📋", title: "Antrean", desc: "Drive → YouTube", href: "#queue" },
-  { icon: "📚", title: "Riwayat", desc: "Semua produksi", href: "#history" },
-  { icon: "✅", title: "Health Check", desc: "Status sistem", href: "/api/health" },
-  { icon: "▶️", title: "YouTube OAuth", desc: "Refresh token", href: "/api/youtube/status" },
-  { icon: "📡", title: "Manual Trigger", desc: "x-worker-secret", href: "#pipeline" },
-];
-
 function getYouTubeThumb(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
 }
@@ -67,6 +77,15 @@ export default function Home() {
   const [pipelineMessage, setPipelineMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [showInstall, setShowInstall] = useState(false);
+
+  const QUICK_ACTIONS = useMemo(() => [
+    { icon: <Video size={20} />, title: "Generate Video", desc: "Pipeline AI 7-langkah", href: "#pipeline", featured: true, isNew: true },
+    { icon: <ListOrdered size={20} />, title: "Antrean", desc: "Drive → YouTube", href: "#queue" },
+    { icon: <History size={20} />, title: "Riwayat", desc: "Semua produksi", href: "#history" },
+    { icon: <HeartPulse size={20} />, title: "Health Check", desc: "Status sistem", href: "/api/health" },
+    { icon: <Share2 size={20} />, title: "YouTube OAuth", desc: "Refresh token", href: "/api/youtube/status" },
+    { icon: <Compass size={20} />, title: "Clipper Dashboard", desc: "Auto Shorts 9:16", href: "/clipper" },
+  ], []);
 
   async function loadQueue() {
     if (!adminToken) {
@@ -109,31 +128,17 @@ export default function Home() {
     fetch("/api/queue", { cache: "no-store", headers: { "x-admin-token": adminToken } })
       .then((response) => response.json())
       .then((data) => {
-        if (!data.ok) throw new Error(data.error ?? "Gagal memuat queue");
-        setItems(data.items ?? []);
+        if (data.ok) setItems(data.items ?? []);
       })
-      .catch((error) => setMessage(error.message));
-    loadRecentJobs().catch((error) => setPipelineMessage(error.message));
-  }, [adminToken, loadRecentJobs]);
+      .catch((e) => console.error("Gagal memuat queue:", e));
 
-  // Auto-refresh polling tiap 8 detik kalau ada job running
-  useEffect(() => {
-    if (!adminToken) return;
-    const hasRunning = recentJobs.some((j) => j.status === "running" || j.status === "pending");
-    if (!hasRunning) return;
-    const t = setInterval(() => {
-      loadRecentJobs().catch(() => {});
-      if (pipelineJob?.id) refreshPipeline(pipelineJob.id).catch(() => {});
-    }, 8000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, recentJobs, pipelineJob?.id]);
+    loadRecentJobs().catch((e) => console.error("Gagal memuat riwayat:", e));
+  }, [adminToken, loadRecentJobs]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const form = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(form.entries());
+    const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
 
     startTransition(async () => {
       try {
@@ -221,6 +226,7 @@ export default function Home() {
         </div>
         <div className="nav-actions">
           <span className="badge-online">{stats.running > 0 ? `${stats.running} aktif` : "Online"}</span>
+          <Link className="btn-secondary" href="/clipper">Clipper Shorts</Link>
           <a className="btn-secondary" href="https://github.com" target="_blank" rel="noreferrer">Docs</a>
         </div>
       </nav>
@@ -240,13 +246,15 @@ export default function Home() {
       {/* ADMIN TOKEN */}
       <section className="card">
         <div className="card-title-row">
-          <div className="card-icon">🔐</div>
+          <div className="card-icon">
+            <Lock size={18} />
+          </div>
           <div>
             <h2>Admin Token</h2>
             <p className="muted">Dibutuhkan untuk akses dashboard data privat</p>
           </div>
         </div>
-        <label>
+        <label style={{ marginTop: 14 }}>
           Token
           <input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="ADMIN_API_TOKEN dari .env.production" />
         </label>
@@ -255,22 +263,30 @@ export default function Home() {
       {/* STATS */}
       <section className="stats">
         <article className="stat s-total">
-          <div className="stat-icon">📊</div>
+          <div className="stat-icon">
+            <History size={20} />
+          </div>
           <span className="stat-label">Total Job</span>
           <strong className="stat-value">{stats.total}</strong>
         </article>
         <article className="stat s-done">
-          <div className="stat-icon">✅</div>
+          <div className="stat-icon">
+            <CheckCircle2 size={20} style={{ color: "var(--ok)" }} />
+          </div>
           <span className="stat-label">Selesai</span>
           <strong className="stat-value">{stats.done}</strong>
         </article>
         <article className="stat s-run">
-          <div className="stat-icon">⚡</div>
+          <div className="stat-icon">
+            <RefreshCw size={20} className={stats.running > 0 ? "animate-spin" : ""} style={{ color: "var(--warn)" }} />
+          </div>
           <span className="stat-label">Berjalan</span>
           <strong className="stat-value">{stats.running}</strong>
         </article>
         <article className="stat s-up">
-          <div className="stat-icon">▶️</div>
+          <div className="stat-icon">
+            <Share2 size={20} style={{ color: "var(--info)" }} />
+          </div>
           <span className="stat-label">Diupload</span>
           <strong className="stat-value">{stats.uploads}</strong>
         </article>
@@ -280,7 +296,7 @@ export default function Home() {
       <section className="actions-grid">
         {QUICK_ACTIONS.map((act) => (
           <a key={act.title} href={act.href} className={`action-tile ${act.featured ? "featured" : ""}`}>
-            <div className="action-icon">{act.icon}</div>
+            <div className="action-icon" style={{ color: "var(--teal)" }}>{act.icon}</div>
             <div className="action-title">
               {act.title} {act.isNew && <span className="new-pill">NEW</span>}
             </div>
@@ -292,14 +308,16 @@ export default function Home() {
       {/* PIPELINE GENERATE */}
       <section id="pipeline" className="card">
         <div className="card-title-row">
-          <div className="card-icon">🎬</div>
+          <div className="card-icon">
+            <Video size={18} />
+          </div>
           <div>
             <h2>Generate Video</h2>
             <p className="muted">Pipeline 7-langkah: AI script → render → YouTube</p>
           </div>
         </div>
 
-        <form className="pipelineForm" onSubmit={startPipeline}>
+        <form className="pipelineForm" onSubmit={startPipeline} style={{ marginTop: 14 }}>
           <input type="hidden" name="channelId" value={DEFAULT_CHANNEL_ID} />
           <input type="hidden" name="templateId" value={DEFAULT_TEMPLATE_ID} />
           <label>
@@ -322,7 +340,9 @@ export default function Home() {
             Jadwal (opsional)
             <input name="scheduledAt" type="datetime-local" />
           </label>
-          <button disabled={isPending}>{isPending ? "Memulai…" : "🚀 Generate Video"}</button>
+          <button disabled={isPending} className="btn-primary">
+            {isPending ? <RefreshCw className="animate-spin" size={14} /> : <PlusCircle size={14} />} Generate Video
+          </button>
         </form>
 
         {pipelineJob && (
@@ -352,7 +372,9 @@ export default function Home() {
                       <strong>🎉 Video terupload</strong>
                       <span className="status-chip completed">{v.privacy_status ?? "private"}</span>
                     </div>
-                    <a href={v.youtube_url} target="_blank" rel="noreferrer">▶️ Buka di YouTube</a>
+                    <a href={v.youtube_url} target="_blank" rel="noreferrer" className="job-link">
+                      <Play size={12} /> Buka di YouTube
+                    </a>
                   </article>
                 ))}
               </div>
@@ -360,49 +382,71 @@ export default function Home() {
           </div>
         )}
 
-        <div className="card-head" style={{ marginTop: 16 }}>
+        <div className="card-head" style={{ marginTop: 24 }}>
           <h3>Cek Status Job</h3>
-          <button className="ghost" type="button" onClick={() => refreshPipeline().catch((e) => setPipelineMessage(e.message))}>Refresh</button>
+          <button className="ghost" type="button" onClick={() => refreshPipeline().catch((e) => setPipelineMessage(e.message))}>
+            <RefreshCw size={12} /> Refresh
+          </button>
         </div>
         <label>
           Job ID
           <input placeholder="Paste job ID untuk lacak progress" onBlur={(e) => e.currentTarget.value && refreshPipeline(e.currentTarget.value).catch((err) => setPipelineMessage(err.message))} />
         </label>
-        {pipelineMessage && <p className="notice">{pipelineMessage}</p>}
+        {pipelineMessage && (
+          <div className="message-banner" style={{ marginTop: 14 }}>
+            <AlertCircle size={14} />
+            <div>{pipelineMessage}</div>
+          </div>
+        )}
       </section>
 
       {/* LEGACY QUEUE */}
       <section id="queue" className="grid">
         <form className="card" onSubmit={submit}>
           <div className="card-title-row">
-            <div className="card-icon">📋</div>
+            <div className="card-icon">
+              <FolderPlus size={18} />
+            </div>
             <div>
               <h2>Tambah ke Queue</h2>
               <p className="muted">Upload langsung dari Google Drive (legacy)</p>
             </div>
           </div>
-          <label>Google Drive File ID<input name="driveFileId" required placeholder="1AbC…" /></label>
-          <label>Judul<input name="title" required maxLength={100} placeholder="Judul video" /></label>
-          <label>Deskripsi<textarea name="description" rows={4} placeholder="Deskripsi YouTube" /></label>
-          <label>Tags<input name="tags" placeholder="shorts, tutorial, ai" /></label>
-          <div className="row">
-            <label>Kategori<input name="category" defaultValue="22" /></label>
-            <label>Visibilitas<select name="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></label>
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+            <label>Google Drive File ID<input name="driveFileId" required placeholder="1AbC…" /></label>
+            <label>Judul<input name="title" required maxLength={100} placeholder="Judul video" /></label>
+            <label>Deskripsi<textarea name="description" rows={4} placeholder="Deskripsi YouTube" /></label>
+            <label>Tags<input name="tags" placeholder="shorts, tutorial, ai" /></label>
+            <div className="row">
+              <label>Kategori<input name="category" defaultValue="22" /></label>
+              <label>Visibilitas<select name="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></label>
+            </div>
+            <label>Jadwal<input name="schedule" type="datetime-local" required /></label>
+            <button disabled={isPending} className="btn-primary">
+              {isPending ? <RefreshCw className="animate-spin" size={14} /> : <PlusCircle size={14} />} Masukkan Queue
+            </button>
+            {message && (
+              <div className="message-banner">
+                <AlertCircle size={14} />
+                <div>{message}</div>
+              </div>
+            )}
           </div>
-          <label>Jadwal<input name="schedule" type="datetime-local" required /></label>
-          <button disabled={isPending}>{isPending ? "Menyimpan…" : "➕ Masukkan Queue"}</button>
-          {message && <p className="notice">{message}</p>}
         </form>
 
         <section className="card">
           <div className="card-head">
             <div className="card-title-row">
-              <div className="card-icon">🗂️</div>
+              <div className="card-icon">
+                <ListOrdered size={18} />
+              </div>
               <h2>Queue Aktif</h2>
             </div>
-            <button className="ghost" onClick={() => loadQueue().catch((e) => setMessage(e.message))}>Refresh</button>
+            <button className="ghost" onClick={() => loadQueue().catch((e) => setMessage(e.message))}>
+              <RefreshCw size={12} /> Refresh
+            </button>
           </div>
-          <div className="items">
+          <div className="items" style={{ marginTop: 14 }}>
             {items.length === 0 && <p className="muted">Belum ada data di queue.</p>}
             {items.map((item) => (
               <article className="item" key={item.id}>
@@ -411,8 +455,17 @@ export default function Home() {
                   <span className={`status-chip ${item.status.toLowerCase()}`}>{item.status}</span>
                 </div>
                 <div className="item-meta">📅 {item.schedule}</div>
-                {item.youtubeUrl && <a href={item.youtubeUrl} target="_blank" rel="noreferrer">▶️ YouTube</a>}
-                {item.error && <small className="muted">{item.error}</small>}
+                {item.youtubeUrl && (
+                  <a href={item.youtubeUrl} target="_blank" rel="noreferrer" className="job-link">
+                    <Play size={12} /> Buka Video
+                  </a>
+                )}
+                {item.error && (
+                  <div className="job-error" style={{ marginTop: 8 }}>
+                    <AlertTriangle size={12} style={{ display: "inline", marginRight: 4 }} />
+                    {item.error}
+                  </div>
+                )}
               </article>
             ))}
           </div>
@@ -423,19 +476,30 @@ export default function Home() {
       <section id="history" className="card">
         <div className="card-head">
           <div className="card-title-row">
-            <div className="card-icon">📚</div>
+            <div className="card-icon">
+              <History size={18} />
+            </div>
             <h2>Riwayat Produksi</h2>
           </div>
-          <button className="ghost" onClick={() => loadRecentJobs().catch((e) => setPipelineMessage(e.message))}>Refresh</button>
+          <button className="ghost" onClick={() => loadRecentJobs().catch((e) => setPipelineMessage(e.message))}>
+            <RefreshCw size={12} /> Refresh
+          </button>
         </div>
-        <div className="items">
+        <div className="items" style={{ marginTop: 14 }}>
           {recentJobs.length === 0 && <p className="muted">Belum ada riwayat. Mulai generate video pertama!</p>}
           {recentJobs.map((job) => {
             const yt = job.youtube_videos?.[0];
             const thumb = yt?.youtube_video_id ? getYouTubeThumb(yt.youtube_video_id) : null;
             return (
               <article className="history-item" key={job.id}>
-                <div className="history-thumb">{thumb ? <img src={thumb} alt="" /> : "🎬"}</div>
+                <div className="history-thumb">
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" />
+                  ) : (
+                    <Video size={24} />
+                  )}
+                </div>
                 <div className="history-body">
                   <div className="history-title">{job.contents?.selected_title || job.contents?.topic || job.id}</div>
                   <div className="history-meta">
@@ -444,7 +508,11 @@ export default function Home() {
                   </div>
                   <div className="history-steps">{(job.steps_completed ?? []).length}/7 langkah selesai</div>
                 </div>
-                {yt?.youtube_url && <a href={yt.youtube_url} target="_blank" rel="noreferrer">▶️ Buka</a>}
+                {yt?.youtube_url && (
+                  <a href={yt.youtube_url} target="_blank" rel="noreferrer" className="ghost" style={{ fontSize: '0.8rem', padding: '8px 16px', borderRadius: '100px' }}>
+                    <Play size={12} /> Lihat
+                  </a>
+                )}
               </article>
             );
           })}
@@ -470,7 +538,7 @@ export default function Home() {
             <p>Buka lebih cepat seperti aplikasi</p>
           </div>
           <div className="install-actions">
-            <button onClick={handleInstall}>Install</button>
+            <button onClick={handleInstall} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Install</button>
             <button className="ghost" onClick={() => setShowInstall(false)}>Nanti</button>
           </div>
         </div>
