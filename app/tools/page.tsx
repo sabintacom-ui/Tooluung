@@ -517,89 +517,129 @@ const toolsCss = `
 .tools-root .live-online-label { color: rgba(255, 255, 255, 0.8); font-weight: 500; }
 
 /* === Section title === */
+/* === Section title === */
 .tools-root .section-title {
   width: 100%;
-  margin: 2.5rem 0 1.2rem;
-  font-size: 1.4rem;
-  font-weight: 800;
+  margin: 3.5rem 0 1.5rem;
+  font-size: 1.45rem;
+  font-weight: 900;
   color: #fff;
-  letter-spacing: 0.3px;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.9rem;
   font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.tools-root .section-title::before {
+  content: "";
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(180deg, var(--teal), var(--gold));
+  border-radius: 10px;
 }
 .tools-root .section-title::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(20, 184, 166, 0.3), transparent);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent);
   margin-left: 0.5rem;
 }
 
 /* === Button Grid === */
 .tools-root .button-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
   width: 100%;
 }
 .tools-root .tool-button {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.8rem 1.4rem;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005));
-  backdrop-filter: blur(20px);
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 1.6rem;
+  min-height: 155px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.005));
+  backdrop-filter: blur(16px);
   color: var(--text);
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
   text-decoration: none;
-  font-weight: 600;
   font-size: 1rem;
-  text-align: center;
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
-              border-color 0.3s ease,
-              background 0.3s ease,
-              box-shadow 0.3s ease;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   position: relative;
   overflow: hidden;
-  animation: cardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 @keyframes cardIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+.tools-root .tool-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(150px circle at var(--x, 50%) var(--y, 50%), rgba(20, 184, 166, 0.12), transparent 85%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
 .tools-root .tool-button:hover {
-  transform: translateY(-5px) scale(1.02);
-  border-color: rgba(20, 184, 166, 0.4);
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(20, 184, 166, 0.35);
   box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.35),
-    0 0 15px rgba(20, 184, 166, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  background: linear-gradient(145deg, rgba(20, 184, 166, 0.08), rgba(255, 255, 255, 0.015));
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 0 25px rgba(20, 184, 166, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.05), rgba(255, 255, 255, 0.015));
+}
+.tools-root .tool-button:hover::before {
+  opacity: 1;
 }
 .tools-root .tool-button:active { transform: translateY(-2px) scale(0.98); }
 
 .tools-root .tool-emoji {
-  font-size: 2.3rem;
-  margin-bottom: 0.8rem;
-  display: block;
-  transition: transform 0.3s ease;
+  font-size: 1.8rem;
+  margin-bottom: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  z-index: 2;
 }
 .tools-root .tool-button:hover .tool-emoji {
-  transform: scale(1.15) rotate(3deg);
-  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.6));
+  transform: scale(1.15) rotate(5deg);
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(20, 184, 166, 0.3);
+  box-shadow: 0 0 15px rgba(20, 184, 166, 0.2);
 }
 .tools-root .tool-label {
-  font-size: 0.98rem;
+  font-size: 1.02rem;
   line-height: 1.3;
   color: #fff;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  z-index: 2;
+}
+.tools-root .tool-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-top: 0.3rem;
+  z-index: 2;
+  text-align: left;
 }
 
 .tools-root .badge-new,
