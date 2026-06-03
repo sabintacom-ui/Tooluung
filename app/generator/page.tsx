@@ -218,7 +218,9 @@ export default function Home() {
       {/* TOP NAV */}
       <nav className="nav">
         <div className="brand">
-          <div className="brand-logo">SY</div>
+          <div className="brand-logo" style={{ overflow: "hidden", background: "none" }}>
+            <img src="/logo.jpg" alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
           <div>
             <div>sibermas-YT</div>
             <small>Sibermas UIN SAIZU</small>

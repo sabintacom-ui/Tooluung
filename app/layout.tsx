@@ -14,8 +14,8 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
   },
   openGraph: {
     title: "sibermas-YT — Dashboard Kreator Sibermas UIN SAIZU",

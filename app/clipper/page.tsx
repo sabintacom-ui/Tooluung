@@ -291,8 +291,8 @@ export default function ClipperPage() {
       {/* TOP NAV */}
       <nav className="nav">
         <div className="brand">
-          <div className="brand-logo">
-            <Scissors size={20} />
+          <div className="brand-logo" style={{ overflow: "hidden", background: "none" }}>
+            <img src="/logo.jpg" alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div>
             <div>sibermas-Clipper</div>
