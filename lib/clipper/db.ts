@@ -128,15 +128,19 @@ export async function getJob(id: string): Promise<ClipperJob | null> {
 
 export async function claimNextClipJob(workerId: string): Promise<ClipperJob | null> {
   const now = new Date().toISOString();
+  const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const candidates = await selectRows<ClipperJob>(
     "clipper_jobs",
-    `status=in.(pending,running)&or=(locked_at.is.null,locked_at.lt.${encodeURIComponent(new Date(Date.now() - 10 * 60 * 1000).toISOString())})&order=created_at.asc&limit=1`
+    `status=in.(pending,running)&or=(locked_at.is.null,locked_at.lt.${encodeURIComponent(staleCutoff)})&order=created_at.asc&limit=1`
   );
   const candidate = candidates[0];
   if (!candidate) return null;
+  const updateQuery =
+    `id=eq.${encodeURIComponent(candidate.id)}` +
+    `&or=(locked_at.is.null,locked_at.lt.${encodeURIComponent(staleCutoff)})`;
   const [claimed] = await updateRows<ClipperJob>(
     "clipper_jobs",
-    `id=eq.${encodeURIComponent(candidate.id)}&locked_at=is.null`,
+    updateQuery,
     { locked_at: now, locked_by: workerId, status: "running", updated_at: now }
   );
   return claimed || null;

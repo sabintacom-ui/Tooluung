@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runOneClipStep } from "@/lib/clipper/orchestrator";
+import { safeCompare } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,8 +9,8 @@ export const maxDuration = 600;
 function authorize(req: Request) {
   const secret = req.headers.get("x-worker-secret");
   const expected = process.env.WORKER_SECRET;
-  if (!expected || !secret || secret !== expected) return false;
-  return true;
+  if (!expected || !secret) return false;
+  return safeCompare(secret, expected);
 }
 
 export async function POST(req: Request) {

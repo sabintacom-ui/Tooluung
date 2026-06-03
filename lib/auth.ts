@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import "server-only";
 
-function safeCompare(provided: string | null | undefined, expected: string): boolean {
+export function safeCompare(provided: string | null | undefined, expected: string): boolean {
   if (!provided) return false;
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
@@ -42,7 +42,7 @@ export function assertTrigger(request: NextRequest) {
 
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+  if (cronSecret && authHeader && authHeader.startsWith("Bearer ")) {
     // Use timing-safe compare on the token portion only
     const token = authHeader.slice("Bearer ".length);
     if (safeCompare(token, cronSecret)) return null;
