@@ -310,19 +310,18 @@ const toolPageCss = `
   color: var(--text-muted);
 }
 .tp-output-body {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 1.5rem;
-  white-space: pre-wrap;
-  font-size: 0.92rem;
-  line-height: 1.6;
+  border-radius: 20px;
+  padding: 1.8rem;
+  font-size: 0.96rem;
+  line-height: 1.7;
   color: rgba(255, 255, 255, 0.95);
-  font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
-  max-height: 600px;
+  max-height: 700px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(20, 184, 166, 0.3) rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
 }
 
 .tp-error {

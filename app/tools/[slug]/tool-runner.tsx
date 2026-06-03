@@ -52,6 +52,52 @@ export function ToolRunner({ tool }: Props) {
     navigator.clipboard.writeText(output);
   }
 
+  function renderMarkdownToHtml(md: string) {
+    // Escape HTML to prevent XSS
+    let html = md
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Code blocks: ```code```
+    html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+      return `<pre style="background: rgba(0,0,0,0.65); padding: 1.2rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); overflow-x: auto; font-family: monospace; margin: 1.2rem 0; font-size: 0.88rem; line-height: 1.5; color: #a7f3d0;"><code style="white-space: pre;">${code.trim()}</code></pre>`;
+    });
+
+    // Inline code: `code`
+    html = html.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); padding: 3px 6px; border-radius: 6px; font-family: monospace; font-size: 0.9em; color: var(--gold-soft);">$1</code>');
+
+    // Headers: ## Title
+    html = html.replace(/^### (.*$)/gim, '<h4 style="color: var(--teal); font-size: 1.12rem; font-weight: 700; margin: 1.5rem 0 0.8rem;">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 style="color: var(--teal); font-size: 1.25rem; font-weight: 800; margin: 1.8rem 0 1rem; border-bottom: 1px solid rgba(20, 184, 166, 0.15); padding-bottom: 0.4rem;">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 style="color: var(--gold-soft); font-size: 1.4rem; font-weight: 900; margin: 2rem 0 1.2rem;">$1</h2>');
+
+    // Bold: **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic: *text*
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Lists: - item or * item
+    html = html.replace(/^\s*[-*]\s+(.*$)/gim, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem; list-style-type: disc;">$1</li>');
+
+    // Horizontal rule: ---
+    html = html.replace(/^---$/gim, '<hr style="border: 0; height: 1px; background: linear-gradient(90deg, rgba(20, 184, 166, 0.3), transparent); margin: 1.8rem 0;" />');
+
+    // Paragraphs / line breaks
+    const parts = html.split(/(\<pre[\s\S]*?\<\/pre\>)/g);
+    for (let i = 0; i < parts.length; i++) {
+      if (!parts[i].startsWith("<pre")) {
+        parts[i] = parts[i]
+          .replace(/\n\n/g, "</p><p style='margin-bottom: 1rem;'>")
+          .replace(/\n/g, "<br />");
+      }
+    }
+    html = parts.join("");
+
+    return `<div style="line-height: 1.75; color: rgba(255,255,255,0.92); font-size: 0.95rem; font-family: system-ui, -apple-system, sans-serif;"><p style='margin-bottom: 1rem;'>${html}</p></div>`;
+  }
+
   return (
     <>
       {tool.fields.map((field) => (
@@ -121,7 +167,7 @@ export function ToolRunner({ tool }: Props) {
               {meta?.tokens ? <> · {meta.tokens.toLocaleString()} tokens</> : null}
             </div>
           </div>
-          <div className="tp-output-body">{output}</div>
+          <div className="tp-output-body" dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(output) }} />
         </div>
       ) : null}
     </>
